@@ -394,6 +394,7 @@
                 this.target = null;
                 this.trail = []; // 添加轨迹存储
                 this.maxTrailLength = 50; // 最大轨迹长度
+                this.level = owner.level; // 飞船等级继承自拥有者
             }
 
             update(params, owner) {
@@ -444,8 +445,9 @@
                     const distance = Math.sqrt(dx * dx + dy * dy);
                     
                     // 保持原有速度大小，只改变方向
-                    this.vx = (dx / distance) * Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-                    this.vy = (dy / distance) * Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                    this.vx = (dx / distance) * speed;
+                    this.vy = (dy / distance) * speed;
                 }
             }
 
@@ -465,6 +467,7 @@
                 
                 // 占据目标据点并继续发展
                 this.target.level = Math.max(this.target.level, this.owner.level * 0.8);
+                this.target.alive = true; // 灭绝的文明被占据后复活
             }
 
             destroyTarget() {
@@ -477,6 +480,13 @@
                     ship.trail = [];
                 });
                 this.target.ships = [];
+            }
+
+            getColor() {
+                if (this.level < 1) return '#4fc3f7';
+                else if (this.level < 2) return '#81c784';
+                else if (this.level < 3) return '#ffb74d';
+                else return '#f06292';
             }
         }
 
@@ -685,11 +695,11 @@
                 });
 
                 // 绘制飞船轨迹
-                this.ctx.strokeStyle = 'rgba(100, 181, 246, 0.3)';
                 this.ctx.lineWidth = 1;
                 this.civilizations.forEach(civ => {
                     civ.ships.forEach(ship => {
                         if (ship.trail.length > 1) {
+                            this.ctx.strokeStyle = ship.getColor() + '40'; // 使用飞船颜色绘制轨迹
                             this.ctx.beginPath();
                             this.ctx.moveTo(ship.trail[0].x, ship.trail[0].y);
                             for (let i = 1; i < ship.trail.length; i++) {
@@ -720,11 +730,11 @@
                 });
 
                 // 绘制飞船
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                 this.civilizations.forEach(civ => {
                     civ.ships.forEach(ship => {
+                        this.ctx.fillStyle = ship.getColor();
                         this.ctx.beginPath();
-                        this.ctx.arc(ship.x, ship.y, 1, 0, Math.PI * 2);
+                        this.ctx.arc(ship.x, ship.y, 2, 0, Math.PI * 2);
                         this.ctx.fill();
                     });
                 });
