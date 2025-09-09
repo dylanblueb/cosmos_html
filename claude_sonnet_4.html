@@ -676,7 +676,8 @@
             }
 
             render() {
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                // 清除画布但保留淡出效果（透明度设为更高以加快清除）
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
                 // 绘制连接
@@ -729,15 +730,21 @@
                     }
                 });
 
-                // 绘制飞船
-                this.civilizations.forEach(civ => {
+                // 绘制飞船并移除已毁灭文明的飞船
+                for (let i = this.civilizations.length - 1; i >= 0; i--) {
+                    const civ = this.civilizations[i];
+                    if (!civ.alive) {
+                        // 如果文明已经毁灭，则移除其所有飞船及其轨迹
+                        civ.ships = [];
+                        continue;
+                    }
                     civ.ships.forEach(ship => {
                         this.ctx.fillStyle = ship.getColor();
                         this.ctx.beginPath();
                         this.ctx.arc(ship.x, ship.y, 2, 0, Math.PI * 2);
                         this.ctx.fill();
                     });
-                });
+                }
             }
 
             animate() {
