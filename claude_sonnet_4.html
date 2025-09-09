@@ -346,6 +346,10 @@
                 const destructionFactor = (1 - this.morality) * 2; // 道德越低，毁灭因子越高
                 if (Math.random() < params.extinctionProb * moralityFactor) {
                     this.alive = false;
+                    // 清除飞船轨迹
+                    this.ships.forEach(ship => {
+                        ship.trail = [];
+                    });
                     return;
                 }
 
@@ -469,6 +473,9 @@
                 // 毁灭目标文明
                 this.target.alive = false;
                 // 清除目标文明的飞船轨迹
+                this.target.ships.forEach(ship => {
+                    ship.trail = [];
+                });
                 this.target.ships = [];
             }
         }
