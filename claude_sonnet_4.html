@@ -140,12 +140,18 @@
             left: 0;
             right: 0;
             bottom: 0;
+            overflow: hidden;
         }
 
         #universe-canvas {
             width: 100%;
             height: 100%;
             background: transparent;
+            cursor: grab;
+        }
+
+        #universe-canvas:active {
+            cursor: grabbing;
         }
 
         .stats-overlay {
@@ -499,6 +505,16 @@
                 this.time = 0;
                 window.simulator = this; // 使模拟器全局可访问，供Ship类使用
                 
+                // 视图控制参数
+                this.view = {
+                    scale: 1,
+                    offsetX: 0,
+                    offsetY: 0,
+                    isDragging: false,
+                    dragStartX: 0,
+                    dragStartY: 0
+                };
+                
                 this.params = {
                     density: 1.0,
                     evolutionSpeed: 1.0,
@@ -521,6 +537,55 @@
                 };
                 resize();
                 window.addEventListener('resize', resize);
+                
+                // 添加鼠标事件监听器
+                this.canvas.addEventListener('wheel', (e) => this.handleZoom(e));
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
+                this.canvas.addEventListener('mouseleave', () => this.handleMouseUp());
+            }
+
+            handleZoom(e) {
+                e.preventDefault();
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 计算缩放中心点的世界坐标
+                const worldX = (mouseX - this.view.offsetX) / this.view.scale;
+                const worldY = (mouseY - this.view.offsetY) / this.view.scale;
+                
+                // 调整缩放比例
+                const zoomIntensity = 0.1;
+                const wheel = e.deltaY < 0 ? 1 : -1;
+                this.view.scale *= (1 + wheel * zoomIntensity);
+                
+                // 限制缩放范围
+                this.view.scale = Math.min(Math.max(0.3, this.view.scale), 5);
+                
+                // 调整偏移量以保持缩放中心点不变
+                this.view.offsetX = mouseX - worldX * this.view.scale;
+                this.view.offsetY = mouseY - worldY * this.view.scale;
+            }
+
+            handleMouseDown(e) {
+                this.view.isDragging = true;
+                this.view.dragStartX = e.clientX - this.view.offsetX;
+                this.view.dragStartY = e.clientY - this.view.offsetY;
+                this.canvas.style.cursor = 'grabbing';
+            }
+
+            handleMouseMove(e) {
+                if (this.view.isDragging) {
+                    this.view.offsetX = e.clientX - this.view.dragStartX;
+                    this.view.offsetY = e.clientY - this.view.dragStartY;
+                }
+            }
+
+            handleMouseUp() {
+                this.view.isDragging = false;
+                this.canvas.style.cursor = 'grab';
             }
 
             setupControls() {
@@ -566,6 +631,9 @@
                 document.getElementById('reset-btn').addEventListener('click', () => {
                     this.running = false;
                     this.time = 0;
+                    this.view.scale = 1;
+                    this.view.offsetX = 0;
+                    this.view.offsetY = 0;
                     this.generateCivilizations();
                 });
             }
@@ -575,8 +643,8 @@
                 const count = Math.floor(this.params.density * 50);
                 
                 for (let i = 0; i < count; i++) {
-                    const x = Math.random() * this.canvas.width;
-                    const y = Math.random() * this.canvas.height;
+                    const x = Math.random() * this.canvas.width / this.view.scale;
+                    const y = Math.random() * this.canvas.height / this.view.scale;
                     this.civilizations.push(new Civilization(x, y));
                 }
             }
@@ -621,8 +689,8 @@
                 
                 // 随机生成新文明
                 if (Math.random() < this.params.density * 0.001) {
-                    const x = Math.random() * this.canvas.width;
-                    const y = Math.random() * this.canvas.height;
+                    const x = Math.random() * this.canvas.width / this.view.scale;
+                    const y = Math.random() * this.canvas.height / this.view.scale;
                     this.civilizations.push(new Civilization(x, y));
                 }
                 
@@ -634,20 +702,20 @@
                     
                     switch(side) {
                         case 0: // 上边
-                            x = Math.random() * this.canvas.width;
+                            x = Math.random() * this.canvas.width / this.view.scale;
                             y = 0;
                             break;
                         case 1: // 右边
-                            x = this.canvas.width;
-                            y = Math.random() * this.canvas.height;
+                            x = this.canvas.width / this.view.scale;
+                            y = Math.random() * this.canvas.height / this.view.scale;
                             break;
                         case 2: // 下边
-                            x = Math.random() * this.canvas.width;
-                            y = this.canvas.height;
+                            x = Math.random() * this.canvas.width / this.view.scale;
+                            y = this.canvas.height / this.view.scale;
                             break;
                         case 3: // 左边
                             x = 0;
-                            y = Math.random() * this.canvas.height;
+                            y = Math.random() * this.canvas.height / this.view.scale;
                             break;
                     }
                     
@@ -680,9 +748,12 @@
                 this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+                // 设置变换矩阵
+                this.ctx.setTransform(this.view.scale, 0, 0, this.view.scale, this.view.offsetX, this.view.offsetY);
+
                 // 绘制连接
                 this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-                this.ctx.lineWidth = 1;
+                this.ctx.lineWidth = 1 / this.view.scale;
                 this.civilizations.forEach(civ => {
                     if (!civ.alive) return;
                     civ.connections.forEach(other => {
@@ -696,7 +767,7 @@
                 });
 
                 // 绘制飞船轨迹
-                this.ctx.lineWidth = 1;
+                this.ctx.lineWidth = 1 / this.view.scale;
                 this.civilizations.forEach(civ => {
                     civ.ships.forEach(ship => {
                         if (ship.trail.length > 1) {
@@ -717,13 +788,13 @@
                     
                     this.ctx.fillStyle = civ.getColor();
                     this.ctx.beginPath();
-                    this.ctx.arc(civ.x, civ.y, civ.getSize(), 0, Math.PI * 2);
+                    this.ctx.arc(civ.x, civ.y, civ.getSize() / this.view.scale, 0, Math.PI * 2);
                     this.ctx.fill();
 
                     // 通信范围指示（高级文明）
                     if (civ.level > 2) {
                         this.ctx.strokeStyle = civ.getColor() + '20';
-                        this.ctx.lineWidth = 1;
+                        this.ctx.lineWidth = 1 / this.view.scale;
                         this.ctx.beginPath();
                         this.ctx.arc(civ.x, civ.y, this.params.commDistance * civ.level, 0, Math.PI * 2);
                         this.ctx.stroke();
@@ -741,10 +812,13 @@
                     civ.ships.forEach(ship => {
                         this.ctx.fillStyle = ship.getColor();
                         this.ctx.beginPath();
-                        this.ctx.arc(ship.x, ship.y, 2, 0, Math.PI * 2);
+                        this.ctx.arc(ship.x, ship.y, 2 / this.view.scale, 0, Math.PI * 2);
                         this.ctx.fill();
                     });
                 }
+
+                // 重置变换矩阵
+                this.ctx.setTransform(1, 0, 0, 1, 0, 0);
             }
 
             animate() {
