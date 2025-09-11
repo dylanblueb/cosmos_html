@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宇宙点状文明体系总体状态二维模拟器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: radial-gradient(ellipse at center, #0a0a1a 0%, #000000 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .universe-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            height: 100vh;
+            gap: 20px;
+        }
+
+        .control-panel {
+            background: rgba(10, 10, 26, 0.95);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        .simulation-space {
+            position: relative;
+            background: radial-gradient(circle at 30% 20%, rgba(60, 60, 120, 0.05) 0%, transparent 50%);
+            overflow: hidden;
+        }
+
+        .title {
+            font-size: 1.8rem;
+            font-weight: 300;
+            text-align: center;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .axioms {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .axioms h4 {
+            color: #4ecdc4;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .axioms ol {
+            font-size: 0.85rem;
+            color: #a0a0a0;
+            padding-left: 20px;
+        }
+
+        .axioms li {
+            margin-bottom: 5px;
+        }
+
+        .parameter-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .parameter-group h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            color: #4ecdc4;
+            font-weight: 400;
+        }
+
+        .parameter {
+            margin-bottom: 12px;
+        }
+
+        .parameter label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            color: #a0a0a0;
+        }
+
+        .parameter input[type="range"] {
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .parameter input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        .parameter-value {
+            display: inline-block;
+            min-width: 50px;
+            text-align: right;
+            color: #4ecdc4;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+
+        .btn.danger {
+            background: linear-gradient(45deg, #ff6b6b, #ff5252);
+        }
+
+        #universe-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #universe-canvas:active {
+            cursor: grabbing;
+        }
+
+        .stats-overlay {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 200px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+        }
+
+        .stat-value {
+            color: #4ecdc4;
+            font-weight: 500;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .crisis-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px 20px;
+            display: none;
+            animation: pulse 1s infinite;
+        }
+
+        .crisis-indicator.active {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="universe-container">
+        <div class="control-panel">
+            <h1 class="title">宇宙文明演化模拟器</h1>
+            
+            <div class="axioms">
+                <h4>基础公理</h4>
+                <ol>
+                    <li>生存是文明的第一需要</li>
+                    <li>文明不断增长和扩张，但宇宙中的物质总量保持不变</li>
+                </ol>
+            </div>
+            
+            <div class="parameter-group">
+                <h3>初始参数</h3>
+                <div class="parameter">
+                    <label for="initial-civs">初始文明数量</label>
+                    <input type="range" id="initial-civs" min="5" max="50" step="1" value="20">
+                    <span class="parameter-value" id="initial-civs-value">20</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <h3>竞争参数</h3>
+                <div class="parameter">
+                    <label for="aggression">攻击倾向</label>
+                    <input type="range" id="aggression" min="0" max="1" step="0.05" value="0.3">
+                    <span class="parameter-value" id="aggression-value">0.30</span>
+                </div>
+                <div class="parameter">
+                    <label for="cooperation">合作倾向</label>
+                    <input type="range" id="cooperation" min="0" max="1" step="0.05" value="0.5">
+                    <span class="parameter-value" id="cooperation-value">0.50</span>
+                </div>
+                <div class="parameter">
+                    <label for="growth-rate">增长速率</label>
+                    <input type="range" id="growth-rate" min="0.5" max="3" step="0.1" value="1.5">
+                    <span class="parameter-value" id="growth-rate-value">1.5</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <h3>生存参数</h3>
+                <div class="parameter">
+                    <label for="resource-efficiency">资源利用效率</label>
+                    <input type="range" id="resource-efficiency" min="0.1" max="1" step="0.05" value="0.5">
+                    <span class="parameter-value" id="resource-efficiency-value">0.50</span>
+                </div>
+                <div class="parameter">
+                    <label for="detection-range">探测范围</label>
+                    <input type="range" id="detection-range" min="50" max="300" step="10" value="150">
+                    <span class="parameter-value" id="detection-range-value">150</span>
+                </div>
+            </div>
+
+            <div class="parameter-group">
+                <h3>模拟控制</h3>
+                <div class="parameter">
+                    <label for="simulation-speed">模拟速度</label>
+                    <input type="range" id="simulation-speed" min="1" max="100" step="1" value="50">
+                    <span class="parameter-value" id="simulation-speed-value">50</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn" id="start-btn">启动</button>
+                <button class="btn" id="pause-btn">暂停</button>
+                <button class="btn danger" id="reset-btn">重置</button>
+            </div>
+        </div>
+
+        <div class="simulation-space">
+            <canvas id="universe-canvas"></canvas>
+            
+            <div class="crisis-indicator" id="crisis-indicator">
+                资源危机！文明开始争夺稀缺资源
+            </div>
+
+            <div class="stats-overlay">
+                <div class="stat-item">
+                    <span class="stat-label">存活文明</span>
+                    <span class="stat-value" id="alive-civs">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">灭绝文明</span>
+                    <span class="stat-value" id="extinct-civs">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">合作联盟</span>
+                    <span class="stat-value" id="alliances">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">战争冲突</span>
+                    <span class="stat-value" id="conflicts">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">演化周期</span>
+                    <span class="stat-value" id="cycles">0</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2ecc71;"></div>
+                    <span>富足文明 (>60%资源)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>稳定文明 (30-60%资源)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>贫瘠文明 (10-30%资源)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>濒危文明 (<10%资源)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #555;"></div>
+                    <span>灭绝文明</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(46,204,113,0.3);"></div>
+                    <span>合作关系</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(231,76,60,0.3);"></div>
+                    <span>敌对关系</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 文明类 - 核心实体
+        class Civilization {
+            constructor(x, y, initialResources) {
+                this.x = x;
+                this.y = y;
+                this.resources = initialResources;
+                this.alive = true;
+                this.age = 0;
+                this.size = 1;
+                this.level = 1; // 文明等级
+                
+                // 生存策略参数
+                this.aggressiveness = Math.random();
+                this.cooperativeness = Math.random();
+                this.baseEfficiency = 0.3 + Math.random() * 0.4; // 基础效率
+                
+                // 关系网络
+                this.allies = new Set();
+                this.enemies = new Set();
+                this.knownCivs = new Set();
+                
+                // 发展历史
+                this.peakResources = initialResources;
+                this.conflicts = 0;
+                this.cooperations = 0;
+            }
+
+            // 获取当前实际效率（基础效率 + 等级加成）
+            get efficiency() {
+                return Math.min(0.9, this.baseEfficiency + (this.level - 1) * 0.1);
+            }
+
+            // 公理1：生存是第一需要
+            survivalDecision(others, params) {
+                const nearbyOthers = this.detectNearby(others, params.detectionRange);
+                
+                nearbyOthers.forEach(other => {
+                    this.knownCivs.add(other);
+                    
+                    // 资源危机时更容易发生冲突
+                    const resourcePressure = 1 - (this.resources / Math.max(this.peakResources, 100));
+                    const aggressionThreshold = params.aggression * (1 + resourcePressure);
+                    
+                    if (this.resources < 50) {
+                        // 濒危状态：必须获取资源
+                        if (other.resources > this.resources && Math.random() < 0.8) {
+                            this.attack(other, params);
+                        }
+                    } else if (this.allies.has(other)) {
+                        // 维持联盟
+                        this.cooperate(other, params);
+                    } else if (this.enemies.has(other)) {
+                        // 对敌人采取行动
+                        if (Math.random() < aggressionThreshold) {
+                            this.attack(other, params);
+                        }
+                    } else {
+                        // 新接触：决定合作或竞争
+                        if (Math.random() < params.cooperation * this.cooperativeness) {
+                            this.proposeAlliance(other);
+                        } else if (Math.random() < aggressionThreshold * this.aggressiveness) {
+                            this.attack(other, params);
+                        }
+                    }
+                });
+            }
+
+            // 公理2：增长但资源有限
+            grow(params) {
+                if (!this.alive) return 0;
+                
+                this.age++;
+                
+                // 资源消耗（效率随等级提升）
+                const consumption = this.size * (2 - this.efficiency * params.resourceEfficiency);
+                this.resources -= consumption;
+                
+                // 增长尝试（需要资源）
+                const growthCost = this.size * 10;
+                if (this.resources > growthCost * 2) {
+                    this.resources -= growthCost;
+                    this.size *= (1 + params.growthRate * 0.01);
+                    this.size = Math.min(this.size, 10); // 增长上限
+                    
+                    // 等级提升
+                    const newLevel = Math.floor(this.size);
+                    if (newLevel > this.level) {
+                        this.level = newLevel;
+                    }
+                }
+                
+                // 资源耗尽导致灭绝
+                if (this.resources <= 0) {
+                    this.alive = false;
+                    this.resources = 0;
+                    // 释放剩余资源到环境
+                    return Math.max(0, consumption * 0.3);
+                }
+                
+                this.peakResources = Math.max(this.peakResources, this.resources);
+                return 0;
+            }
+
+            detectNearby(others, range) {
+                return others.filter(other => {
+                    if (other === this || !other.alive) return false;
+                    const distance = Math.sqrt(
+                        Math.pow(this.x - other.x, 2) + 
+                        Math.pow(this.y - other.y, 2)
+                    );
+                    return distance <= range * Math.sqrt(this.size);
+                });
+            }
+
+            attack(target, params) {
+                if (!target.alive) return;
+                
+                const distance = Math.sqrt(
+                    Math.pow(this.x - target.x, 2) + 
+                    Math.pow(this.y - target.y, 2)
+                );
+                
+                // 攻击成功率取决于距离、大小差异和文明等级
+                const levelAdvantage = this.level / Math.max(target.level, 1);
+                const sizeAdvantage = this.size / (this.size + target.size);
+                const distanceFactor = Math.max(0.1, 1 - distance / (params.detectionRange * 2));
+                
+                const successRate = Math.min(0.8, sizeAdvantage * distanceFactor * levelAdvantage * 0.7);
+                
+                if (Math.random() < successRate) {
+                    // 掠夺资源（等级越高掠夺效率越高）
+                    const plunderRate = 0.2 + (this.level - 1) * 0.1;
+                    const plunder = Math.min(target.resources * plunderRate, this.size * 50);
+                    this.resources += plunder * 0.8; // 掠夺有损耗
+                    target.resources -= plunder;
+                    
+                    this.conflicts++;
+                    target.conflicts++;
+                    
+                    // 建立敌对关系
+                    this.enemies.add(target);
+                    target.enemies.add(this);
+                    
+                    // 可能导致目标灭绝
+                    if (target.resources <= 0) {
+                        target.alive = false;
+                        target.resources = 0;
+                        // 获取剩余资源
+                        this.resources += target.size * 20;
+                    }
+                } else {
+                    // 攻击失败，损失资源
+                    this.resources = Math.max(0, this.resources - this.size * 10);
+                }
+            }
+
+            cooperate(partner, params) {
+                if (!partner.alive || !this.allies.has(partner)) return;
+                
+                // 资源共享带来效率提升，与文明等级相关
+                const avgLevel = (this.level + partner.level) / 2;
+                const sharedEfficiency = (this.efficiency + partner.efficiency) / 2;
+                const bonus = sharedEfficiency * params.cooperation * 10 * avgLevel;
+                
+                this.resources += bonus;
+                partner.resources += bonus;
+                
+                this.cooperations++;
+                partner.cooperations++;
+            }
+
+            proposeAlliance(other) {
+                // 基于相互利益决定是否结盟
+                const mutualBenefit = (this.cooperativeness + other.cooperativeness) / 2;
+                
+                if (Math.random() < mutualBenefit) {
+                    this.allies.add(other);
+                    other.allies.add(this);
+                    
+                    // 解除敌对关系
+                    this.enemies.delete(other);
+                    other.enemies.delete(this);
+                }
+            }
+
+            getColor() {
+                if (!this.alive) return '#555';
+                
+                const resourceRatio = this.resources / Math.max(this.peakResources, 100);
+                
+                if (resourceRatio > 0.6) return '#2ecc71';
+                else if (resourceRatio > 0.3) return '#3498db';
+                else if (resourceRatio > 0.1) return '#f39c12';
+                else return '#e74c3c';
+            }
+
+            getRadius() {
+                const baseRadius = Math.max(3, Math.min(15, 3 + Math.sqrt(this.size) * 3));
+                const levelBonus = (this.level - 1) * 2; // 等级越高圆圈越大
+                return baseRadius + levelBonus;
+            }
+        }
+
+        // 宇宙模拟器主类
+        class UniverseSimulator {
+            constructor() {
+                this.canvas = document.getElementById('universe-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.civilizations = [];
+                this.running = false;
+                this.cycles = 0;
+                this.environmentalResources = 0; // 环境中的自由资源
+                
+                this.params = {
+                    initialCivs: 20,
+                    aggression: 0.3,
+                    cooperation: 0.5,
+                    growthRate: 1.5,
+                    resourceEfficiency: 0.5,
+                    detectionRange: 150,
+                    simulationSpeed: 50
+                };
+                
+                this.stats = {
+                    extinctions: 0,
+                    totalConflicts: 0,
+                    totalCooperations: 0
+                };
+
+                this.setupCanvas();
+                this.setupControls();
+                this.initializeSimulation();
+                this.animate();
+            }
+
+            setupCanvas() {
+                const resize = () => {
+                    this.canvas.width = this.canvas.offsetWidth;
+                    this.canvas.height = this.canvas.offsetHeight;
+                };
+                resize();
+                window.addEventListener('resize', resize);
+            }
+
+            setupControls() {
+                // 参数控制
+                const paramControls = [
+                    'initial-civs', 'aggression', 
+                    'cooperation', 'growth-rate', 'resource-efficiency', 
+                    'detection-range', 'simulation-speed'
+                ];
+                
+                paramControls.forEach(id => {
+                    const input = document.getElementById(id);
+                    const valueSpan = document.getElementById(id + '-value');
+                    
+                    input.addEventListener('input', () => {
+                        const value = parseFloat(input.value);
+                        valueSpan.textContent = value < 10 ? value.toFixed(2) : Math.floor(value);
+                        
+                        const paramMap = {
+                            'initial-civs': 'initialCivs',
+                            'aggression': 'aggression',
+                            'cooperation': 'cooperation',
+                            'growth-rate': 'growthRate',
+                            'resource-efficiency': 'resourceEfficiency',
+                            'detection-range': 'detectionRange',
+                            'simulation-speed': 'simulationSpeed'
+                        };
+                        
+                        this.params[paramMap[id]] = value;
+                    });
+                    
+                    input.dispatchEvent(new Event('input'));
+                });
+
+                // 控制按钮
+                document.getElementById('start-btn').addEventListener('click', () => {
+                    // 点击开始按钮时重新初始化模拟
+                    this.initializeSimulation();
+                    this.running = true;
+                });
+
+                document.getElementById('pause-btn').addEventListener('click', () => {
+                    this.running = false;
+                });
+
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    this.running = false;
+                    this.cycles = 0;
+                    this.environmentalResources = 0;
+                    this.stats = {
+                        extinctions: 0,
+                        totalConflicts: 0,
+                        totalCooperations: 0
+                    };
+                    this.initializeSimulation();
+                });
+            }
+
+            initializeSimulation() {
+                this.civilizations = [];
+                this.cycles = 0;
+                this.environmentalResources = 0;
+                this.stats.extinctions = 0;
+                
+                // 分配初始资源
+                const totalResources = 10000;
+                const resourcePerCiv = totalResources / this.params.initialCivs;
+                
+                for (let i = 0; i < this.params.initialCivs; i++) {
+                    const angle = (i / this.params.initialCivs) * Math.PI * 2 + Math.random() * 0.5;
+                    const radius = 100 + Math.random() * 200;
+                    const x = this.canvas.width / 2 + Math.cos(angle) * radius;
+                    const y = this.canvas.height / 2 + Math.sin(angle) * radius;
+                    
+                    // 确保位置在画布内
+                    const clampedX = Math.max(50, Math.min(this.canvas.width - 50, x));
+                    const clampedY = Math.max(50, Math.min(this.canvas.height - 50, y));
+                    
+                    const resources = resourcePerCiv * (0.7 + Math.random() * 0.6);
+                    this.civilizations.push(new Civilization(clampedX, clampedY, resources));
+                }
+            }
+
+            update() {
+                if (!this.running) return;
+                
+                // 根据模拟速度控制更新频率
+                const speedFactor = this.params.simulationSpeed / 50;
+                if (Math.random() > speedFactor) return;
+                
+                this.cycles++;
+                
+                // 阶段1：生存决策（公理1）
+                this.civilizations.forEach(civ => {
+                    if (civ.alive) {
+                        civ.survivalDecision(this.civilizations, this.params);
+                    }
+                });
+                
+                // 阶段2：增长与资源消耗（公理2）
+                let totalReleasedResources = 0;
+                this.civilizations.forEach(civ => {
+                    totalReleasedResources += civ.grow(this.params);
+                });
+                
+                // 将释放的资源添加到环境中
+                this.environmentalResources += totalReleasedResources;
+                
+                // 环境资源的再分配（让幸存者有机会获得）
+                if (this.environmentalResources > 0) {
+                    const aliveCivs = this.civilizations.filter(c => c.alive);
+                    if (aliveCivs.length > 0) {
+                        const resourcePerCiv = this.environmentalResources / aliveCivs.length;
+                        aliveCivs.forEach(civ => {
+                            civ.resources += resourcePerCiv * 0.1; // 少量环境资源补充
+                        });
+                        this.environmentalResources *= 0.9; // 环境资源逐渐减少
+                    }
+                }
+                
+                // 统计灭绝
+                const currentExtinctions = this.civilizations.filter(c => !c.alive).length;
+                this.stats.extinctions = currentExtinctions;
+                
+                // 检查资源危机
+                const totalActiveResources = this.civilizations
+                    .filter(civ => civ.alive)
+                    .reduce((sum, civ) => sum + civ.resources, 0);
+                
+                const resourceRatio = totalActiveResources / 10000;
+                
+                const crisisIndicator = document.getElementById('crisis-indicator');
+                if (resourceRatio < 0.3) {
+                    crisisIndicator.classList.add('active');
+                } else {
+                    crisisIndicator.classList.remove('active');
+                }
+                
+                this.updateStats();
+            }
+
+            updateStats() {
+                const aliveCivs = this.civilizations.filter(c => c.alive);
+                
+                let alliances = 0;
+                let conflicts = 0;
+                
+                aliveCivs.forEach(civ => {
+                    alliances += civ.allies.size;
+                    conflicts += civ.enemies.size;
+                });
+                
+                // 更新统计显示
+                document.getElementById('alive-civs').textContent = aliveCivs.length;
+                document.getElementById('extinct-civs').textContent = this.stats.extinctions;
+                document.getElementById('alliances').textContent = Math.floor(alliances / 2);
+                document.getElementById('conflicts').textContent = Math.floor(conflicts / 2);
+                document.getElementById('cycles').textContent = this.cycles;
+            }
+
+            render() {
+                // 清除画布
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 绘制关系网络
+                this.civilizations.forEach(civ => {
+                    if (!civ.alive) return;
+                    
+                    // 绘制合作关系
+                    this.ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
+                    this.ctx.lineWidth = 2;
+                    civ.allies.forEach(ally => {
+                        if (!ally.alive) return;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(civ.x, civ.y);
+                        this.ctx.lineTo(ally.x, ally.y);
+                        this.ctx.stroke();
+                    });
+                    
+                    // 绘制敌对关系
+                    this.ctx.strokeStyle = 'rgba(231, 76, 60, 0.3)';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.setLineDash([5, 5]);
+                    civ.enemies.forEach(enemy => {
+                        if (!enemy.alive) return;
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(civ.x, civ.y);
+                        this.ctx.lineTo(enemy.x, enemy.y);
+                        this.ctx.stroke();
+                    });
+                    this.ctx.setLineDash([]);
+                });
+                
+                // 绘制文明
+                this.civilizations.forEach(civ => {
+                    this.ctx.fillStyle = civ.getColor();
+                    this.ctx.beginPath();
+                    this.ctx.arc(civ.x, civ.y, civ.getRadius(), 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // 绘制探测范围
+                    if (civ.alive && civ.size > 1) {
+                        this.ctx.strokeStyle = civ.getColor() + '20';
+                        this.ctx.lineWidth = 1;
+                        this.ctx.beginPath();
+                        this.ctx.arc(civ.x, civ.y, 
+                            this.params.detectionRange * Math.sqrt(civ.size), 
+                            0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                });
+            }
+
+            animate() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // 启动模拟器
+        document.addEventListener('DOMContentLoaded', () => {
+            new UniverseSimulator();
+        });
+    </script>
+</body>
+</html>
