@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#05050f">
+<title>宇宙点状文明体系总体状态二维模拟器</title>
+<style>
+:root {
+    --accent: #4ecdc4;
+    --accent2: #45b7d1;
+    --danger: #ff6b6b;
+    --muted: #a0a0a0;
+    --panel-bg: rgba(10, 10, 26, 0.96);
+    --card-bg: rgba(0, 0, 0, 0.78);
+    --line: rgba(255, 255, 255, 0.1);
+    --panel-w: 350px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+    font-family: 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+    background: radial-gradient(ellipse at center, #0a0a1a 0%, #000 100%);
+    color: #fff;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+button, select, input { font: inherit; }
+
+.universe-container {
+    display: grid;
+    grid-template-columns: var(--panel-w) 1fr;
+    height: 100%;
+}
+
+/* ---------- 控制面板 ---------- */
+.control-panel {
+    background: var(--panel-bg);
+    border-right: 1px solid var(--line);
+    padding: 26px 20px 30px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 30;
+}
+.panel-head { display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 18px; }
+.title {
+    font-size: 1.6rem;
+    font-weight: 300;
+    text-align: center;
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.subtitle { text-align: center; font-size: 0.75rem; color: #777; margin: -10px 0 18px; }
+.drawer-close {
+    display: none;
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    background: rgba(255,255,255,0.08); border: 1px solid var(--line); color: #ddd;
+    border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem;
+}
+.axioms {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid var(--line);
+}
+.axioms h4 { color: var(--accent); font-size: 0.9rem; margin-bottom: 10px; }
+.axioms ol { font-size: 0.85rem; color: var(--muted); padding-left: 20px; }
+.axioms li { margin-bottom: 5px; }
+
+.parameter-group {
+    margin-bottom: 18px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.parameter-group h3 { font-size: 1rem; margin-bottom: 12px; color: var(--accent); font-weight: 400; }
+.parameter { margin-bottom: 12px; }
+.parameter:last-child { margin-bottom: 0; }
+.parameter-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.parameter label { font-size: 0.85rem; color: var(--muted); }
+.parameter .hint { font-size: 0.72rem; color: #666; margin-left: 4px; }
+.parameter-value { min-width: 50px; text-align: right; color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
+.parameter input[type="range"] {
+    width: 100%; height: 22px; background: transparent; outline: none;
+    -webkit-appearance: none; appearance: none; touch-action: pan-y;
+}
+.parameter input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; }
+.parameter input[type="range"]::-moz-range-track { height: 3px; background: rgba(255,255,255,0.15); border-radius: 2px; }
+.parameter input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6.5px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+.parameter input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border: none; background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+}
+.field { display: flex; gap: 8px; align-items: center; }
+.field input[type="text"], .field select {
+    flex: 1; min-width: 0; background: rgba(255,255,255,0.06); color: #fff;
+    border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-size: 0.85rem;
+}
+.field select option { background: #111; }
+.small-btn {
+    background: rgba(255,255,255,0.08); color: #ddd; border: 1px solid var(--line);
+    border-radius: 6px; padding: 7px 10px; cursor: pointer; font-size: 0.85rem; white-space: nowrap;
+}
+.small-btn:hover { background: rgba(78,205,196,0.18); }
+.rule-note { font-size: 0.74rem; color: #777; margin-top: 6px; line-height: 1.5; }
+
+.controls { display: flex; gap: 10px; margin-top: 6px; }
+.btn {
+    flex: 1; padding: 10px 6px;
+    background: linear-gradient(45deg, var(--accent), var(--accent2));
+    border: none; border-radius: 6px; color: #fff; font-weight: 500; cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4); }
+.btn.secondary { background: rgba(255,255,255,0.1); }
+.btn.danger { background: linear-gradient(45deg, #ff6b6b, #ff5252); }
+.kbd-hint { font-size: 0.72rem; color: #666; margin-top: 12px; text-align: center; line-height: 1.6; }
+.links { font-size: 0.78rem; text-align: center; margin-top: 10px; }
+.links a { color: var(--accent2); text-decoration: none; }
+
+/* ---------- 模拟空间 ---------- */
+.simulation-space { position: relative; overflow: hidden; min-width: 0; min-height: 0; }
+#universe-canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+    cursor: grab; touch-action: none;
+}
+#universe-canvas.dragging { cursor: grabbing; }
+
+.card {
+    position: absolute;
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.stats-overlay { top: 20px; right: 20px; padding: 16px 18px; width: 230px; }
+.stat-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.88rem; }
+.stat-label { color: var(--muted); }
+.stat-value { color: var(--accent); font-weight: 500; min-width: 60px; text-align: right; font-variant-numeric: tabular-nums; }
+.chart-wrap { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.chart-legend { display: flex; gap: 8px; font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; flex-wrap: wrap; }
+.chart-legend i { display: inline-block; width: 8px; height: 2px; vertical-align: middle; margin-right: 3px; }
+#history-chart { width: 100%; height: 60px; display: block; }
+
+.legend { bottom: 20px; left: 20px; padding: 12px 15px; }
+.legend summary { cursor: pointer; font-size: 0.85rem; color: var(--accent); list-style: none; user-select: none; }
+.legend summary::-webkit-details-marker { display: none; }
+.legend summary::before { content: '▸ '; }
+.legend[open] summary::before { content: '▾ '; }
+.legend[open] summary { margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; margin-bottom: 7px; font-size: 0.82rem; }
+.legend-item:last-child { margin-bottom: 0; }
+.legend-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex: none; }
+.legend-line { width: 14px; height: 0; margin-right: 8px; flex: none; border-top: 2px solid rgba(46,204,113,0.7); }
+.legend-line.enemy { border-top: 2px dashed rgba(231,76,60,0.8); }
+
+.crisis-indicator {
+    position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(255, 0, 0, 0.12); border: 1px solid rgba(255, 0, 0, 0.35);
+    border-radius: 8px; padding: 10px 20px; display: none; animation: pulse 1s infinite;
+    font-size: 0.9rem; text-align: center; pointer-events: none; z-index: 5;
+}
+.crisis-indicator.active { display: block; }
+.crisis-indicator.extinct { background: rgba(120,120,120,0.15); border-color: rgba(200,200,200,0.3); animation: none; }
+@keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+
+.inspector { bottom: 20px; right: 20px; width: 230px; padding: 14px 16px; display: none; font-size: 0.82rem; z-index: 6; }
+.inspector.active { display: block; }
+.inspector h4 { font-size: 0.95rem; font-weight: 500; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+.inspector h4 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+.inspector .close { background: none; border: none; color: #999; cursor: pointer; font-size: 1rem; padding: 0 2px; }
+.inspector .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.inspector .row span:first-child { color: var(--muted); }
+.inspector .row span:last-child { font-variant-numeric: tabular-nums; }
+.inspector .bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 2px 0 7px; overflow: hidden; }
+.inspector .bar > div { height: 100%; background: var(--accent); }
+
+.hint-toast {
+    position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
+    font-size: 0.75rem; color: #888; pointer-events: none; white-space: nowrap;
+}
+
+.quickbar { display: none; }
+
+/* ---------- 窄屏：控制面板变为底部抽屉 ---------- */
+@media (max-width: 768px) {
+    .universe-container { grid-template-columns: 1fr; }
+    .control-panel {
+        position: fixed; left: 0; right: 0; bottom: 0;
+        max-height: 78vh; max-height: 78dvh;
+        border-right: none; border-top: 1px solid var(--line);
+        border-radius: 16px 16px 0 0;
+        padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
+        transform: translateY(105%);
+        transition: transform .28s ease;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
+    }
+    .control-panel.open { transform: translateY(0); }
+    .drawer-close { display: block; }
+    .title { font-size: 1.25rem; }
+    .stats-overlay { top: calc(8px + env(safe-area-inset-top)); right: 8px; padding: 10px 12px; width: 168px; }
+    .stat-item { font-size: 0.76rem; margin-bottom: 4px; }
+    .stat-value { min-width: 40px; }
+    #history-chart { height: 40px; }
+    .chart-legend { font-size: 0.62rem; gap: 5px; }
+    .legend { left: 8px; bottom: calc(70px + env(safe-area-inset-bottom)); padding: 8px 11px; }
+    .legend-item { font-size: 0.74rem; }
+    .crisis-indicator {
+        left: 8px; transform: none; top: calc(8px + env(safe-area-inset-top));
+        max-width: calc(100% - 192px); font-size: 0.75rem; padding: 7px 10px;
+    }
+    .inspector { right: 8px; left: auto; bottom: calc(70px + env(safe-area-inset-bottom)); width: 190px; font-size: 0.76rem; }
+    .hint-toast { display: none; }
+    .quickbar {
+        display: flex; gap: 8px; position: absolute; left: 50%; transform: translateX(-50%);
+        bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 20;
+        background: var(--card-bg); border: 1px solid var(--line); border-radius: 26px; padding: 6px;
+        backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    }
+    .quickbar button {
+        width: 46px; height: 40px; border-radius: 20px; border: none; cursor: pointer;
+        background: rgba(255,255,255,0.08); color: #fff; font-size: 1.05rem;
+    }
+    .quickbar button.primary { background: linear-gradient(45deg, var(--accent), var(--accent2)); }
+    .drawer-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 25; display: none; }
+    .drawer-backdrop.open { display: block; }
+}
+@media (max-width: 380px) {
+    .stats-overlay { width: 150px; }
+    .crisis-indicator { max-width: calc(100% - 172px); }
+}
+</style>
+</head>
+<body>
+<div class="universe-container">
+    <aside class="control-panel" id="control-panel" aria-label="控制面板">
+        <div class="panel-head">
+            <h1 class="title">宇宙文明演化模拟器</h1>
+            <button class="drawer-close" id="drawer-close" type="button">收起</button>
+        </div>
+        <p class="subtitle">宇宙点状文明体系总体状态二维模拟器</p>
+
+        <div class="axioms">
+            <h4>基础公理</h4>
+            <ol>
+                <li>生存是文明的第一需要</li>
+                <li>文明不断增长和扩张，但宇宙中的物质总量保持不变</li>
+            </ol>
+        </div>
+
+        <!-- 参数控件由 UI 模块根据 PARAM_DEFS 生成 -->
+        <div id="param-groups"></div>
+
+        <div class="parameter-group">
+            <h3>宇宙设定</h3>
+            <div class="parameter">
+                <div class="parameter-row"><label for="rule-mode">资源规则</label></div>
+                <div class="field">
+                    <select id="rule-mode">
+                        <option value="conserved">严格守恒（公理二）</option>
+                        <option value="legacy">原版规则</option>
+                    </select>
+                </div>
+                <p class="rule-note" id="rule-note"></p>
+            </div>
+            <div class="parameter">
+                <div class="parameter-row"><label for="seed-input">随机种子</label><span class="hint">重置后生效，可写入 ?seed=</span></div>
+                <div class="field">
+                    <input type="text" id="seed-input" autocomplete="off" spellcheck="false">
+                    <button class="small-btn" id="seed-random" type="button" title="换一个随机种子">🎲 随机</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" id="start-btn" type="button">启动</button>
+            <button class="btn secondary" id="step-btn" type="button">单步</button>
+            <button class="btn danger" id="reset-btn" type="button">重置</button>
+        </div>
+        <p class="kbd-hint">空格 启动/暂停 · → 单步 · R 重置<br>点击文明查看详情 · 拖动平移 · 滚轮/双指缩放 · 双击复位视图</p>
+        <p class="links"><a href="versions.html">历史版本</a></p>
+    </aside>
+
+    <main class="simulation-space" id="simulation-space">
+        <canvas id="universe-canvas" aria-label="宇宙模拟画布"></canvas>
+
+        <div class="crisis-indicator" id="crisis-indicator">资源危机！文明开始争夺稀缺资源</div>
+
+        <div class="card stats-overlay">
+            <div class="stat-item"><span class="stat-label">存活文明</span><span class="stat-value" id="alive-civs">0</span></div>
+            <div class="stat-item"><span class="stat-label">灭绝文明</span><span class="stat-value" id="extinct-civs">0</span></div>
+            <div class="stat-item"><span class="stat-label">合作联盟</span><span class="stat-value" id="alliances">0</span></div>
+            <div class="stat-item"><span class="stat-label">战争冲突</span><span class="stat-value" id="conflicts">0</span></div>
+            <div class="stat-item"><span class="stat-label">演化周期</span><span class="stat-value" id="cycles">0</span></div>
+            <div class="stat-item"><span class="stat-label">文明持有物质</span><span class="stat-value" id="civ-matter">0%</span></div>
+            <div class="stat-item"><span class="stat-label">宇宙物质总量</span><span class="stat-value" id="total-matter">10000</span></div>
+            <div class="chart-wrap">
+                <div class="chart-legend">
+                    <span><i style="background:#2ecc71"></i>存活</span>
+                    <span><i style="background:#4ecdc4"></i>文明物质</span>
+                    <span><i style="background:#e74c3c"></i>冲突</span>
+                </div>
+                <canvas id="history-chart"></canvas>
+            </div>
+        </div>
+
+        <details class="card legend" id="legend" open>
+            <summary>图例</summary>
+            <div class="legend-item"><div class="legend-color" style="background:#2ecc71"></div><span>富足文明 (&gt;60%资源)</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:#3498db"></div><span>稳定文明 (30-60%资源)</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:#f39c12"></div><span>贫瘠文明 (10-30%资源)</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:#e74c3c"></div><span>濒危文明 (&lt;10%资源)</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:#555"></div><span>灭绝文明</span></div>
+            <div class="legend-item"><div class="legend-line"></div><span>合作关系</span></div>
+            <div class="legend-item"><div class="legend-line enemy"></div><span>敌对关系</span></div>
+        </details>
+
+        <div class="card inspector" id="inspector" aria-live="polite"></div>
+        <div class="hint-toast" id="hint-toast">点击任意文明查看详情</div>
+
+        <div class="quickbar" id="quickbar">
+            <button class="primary" id="qb-play" type="button" aria-label="启动/暂停">▶</button>
+            <button id="qb-step" type="button" aria-label="单步">⏭</button>
+            <button id="qb-reset" type="button" aria-label="重置">↺</button>
+            <button id="qb-panel" type="button" aria-label="参数">⚙</button>
+        </div>
+    </main>
+</div>
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+ * 宇宙点状文明体系总体状态二维模拟器
+ * 模块：CONFIG / RNG / SpatialGrid / State(Civilization, createWorld)
+ *       Sim(step) / Render / Chart / UI / App(主循环)
+ * 模拟在固定的“世界坐标”(WORLD_W × WORLD_H) 中运行，与画布尺寸无关；
+ * 渲染时再按视图变换缩放到屏幕，因此窗口变化不影响模拟结果。
+ * ===================================================================== */
+(function (global) {
+
+// ============================== CONFIG ==============================
+const CONFIG = {
+    WORLD_W: 800,
+    WORLD_H: 800,
+    TOTAL_MATTER: 10000,        // 宇宙物质总量（公理二）
+    MAX_SIZE: 10,               // 增长上限
+    GRID_CELL: 80,              // 空间网格单元（世界单位）
+    STEPS_PER_SPEED: 1.2,       // 速度 50 ≈ 60 步/秒（与原版 60fps 下相当）
+    MAX_STEPS_PER_FRAME: 12,    // 防止“死亡螺旋”
+    UI_INTERVAL_MS: 250,        // 统计面板刷新间隔
+    HISTORY_MAX: 400,           // 曲线最多点数（满后抽稀）
+    CRISIS_RATIO: 0.3
+};
+
+const PARAM_DEFS = [
+    { group: '初始参数', key: 'initialCivs',        id: 'initial-civs',        label: '初始文明数量', min: 5,   max: 50,  step: 1,    value: 20,  digits: 0, hint: '重置后生效' },
+    { group: '竞争参数', key: 'aggression',         id: 'aggression',          label: '攻击倾向',     min: 0,   max: 1,   step: 0.05, value: 0.3, digits: 2 },
+    { group: '竞争参数', key: 'cooperation',        id: 'cooperation',         label: '合作倾向',     min: 0,   max: 1,   step: 0.05, value: 0.5, digits: 2 },
+    { group: '竞争参数', key: 'growthRate',         id: 'growth-rate',         label: '增长速率',     min: 0.5, max: 3,   step: 0.1,  value: 1.5, digits: 1 },
+    { group: '生存参数', key: 'resourceEfficiency', id: 'resource-efficiency', label: '资源利用效率', min: 0.1, max: 1,   step: 0.05, value: 0.5, digits: 2 },
+    { group: '生存参数', key: 'detectionRange',     id: 'detection-range',     label: '探测范围',     min: 50,  max: 300, step: 10,   value: 150, digits: 0 },
+    { group: '模拟控制', key: 'simulationSpeed',    id: 'simulation-speed',    label: '模拟速度',     min: 1,   max: 100, step: 1,    value: 50,  digits: 0, hint: '≈ 速度×1.2 步/秒' }
+];
+
+function defaultParams() {
+    const p = { mode: 'conserved' };
+    for (const d of PARAM_DEFS) p[d.key] = d.value;
+    return p;
+}
+
+const COLORS = {
+    rich: '#2ecc71', stable: '#3498db', poor: '#f39c12', endangered: '#e74c3c', dead: '#555555'
+};
+const RING_COLORS = {   // 探测范围圈（原版为颜色 + '20' 透明度）
+    '#2ecc71': 'rgba(46,204,113,0.125)', '#3498db': 'rgba(52,152,219,0.125)',
+    '#f39c12': 'rgba(243,156,18,0.125)', '#e74c3c': 'rgba(231,76,60,0.125)'
+};
+
+// ============================== RNG ==============================
+function hashSeed(str) {               // FNV-1a，字符串 → uint32
+    str = String(str);
+    if (/^\d+$/.test(str) && Number(str) <= 0xFFFFFFFF) return Number(str) >>> 0;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return h >>> 0;
+}
+function mulberry32(a) {
+    a = a >>> 0;
+    return function () {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+function randomSeedString() { return String(Math.floor(Math.random() * 1e9)); }
+
+// ============================== 空间网格 ==============================
+class SpatialGrid {
+    constructor(w, h, cell) {
+        this.cell = cell;
+        this.cols = Math.max(1, Math.ceil(w / cell));
+        this.rows = Math.max(1, Math.ceil(h / cell));
+        this.cells = new Array(this.cols * this.rows);
+        for (let i = 0; i < this.cells.length; i++) this.cells[i] = [];
+    }
+    clear() { for (const c of this.cells) c.length = 0; }
+    _cx(x) { return Math.min(this.cols - 1, Math.max(0, Math.floor(x / this.cell))); }
+    _cy(y) { return Math.min(this.rows - 1, Math.max(0, Math.floor(y / this.cell))); }
+    insert(item) { this.cells[this._cy(item.y) * this.cols + this._cx(item.x)].push(item); }
+    /** 把半径 r 内可能的候选写入 out（调用方仍需精确距离判断） */
+    query(x, y, r, out) {
+        out.length = 0;
+        const x0 = this._cx(x - r), x1 = this._cx(x + r);
+        const y0 = this._cy(y - r), y1 = this._cy(y + r);
+        for (let cy = y0; cy <= y1; cy++) {
+            const base = cy * this.cols;
+            for (let cx = x0; cx <= x1; cx++) {
+                const cell = this.cells[base + cx];
+                for (let i = 0; i < cell.length; i++) out.push(cell[i]);
+            }
+        }
+        return out;
+    }
+}
+
+// ============================== STATE ==============================
+class Civilization {
+    constructor(id, x, y, resources, rng) {
+        this.id = id;
+        this.x = x;
+        this.y = y;
+        this.resources = resources;
+        this.alive = true;
+        this.age = 0;
+        this.size = 1;
+        this.level = 1;                       // 文明等级
+        // 生存策略参数
+        this.aggressiveness = rng();
+        this.cooperativeness = rng();
+        this.baseEfficiency = 0.3 + rng() * 0.4;
+        // 关系网络（存 id，死亡时双向清理）
+        this.allies = new Set();
+        this.enemies = new Set();
+        this.known = new Set();
+        // 发展历史
+        this.peakResources = resources;
+        this.conflicts = 0;
+        this.cooperations = 0;
+        this.diedAt = -1;
+        this.killedBy = -1;
+    }
+    /** 当前实际效率（基础效率 + 等级加成） */
+    get efficiency() { return Math.min(0.9, this.baseEfficiency + (this.level - 1) * 0.1); }
+    get resourceRatio() { return this.resources / Math.max(this.peakResources, 100); }
+    get color() {
+        if (!this.alive) return COLORS.dead;
+        const r = this.resourceRatio;
+        if (r > 0.6) return COLORS.rich;
+        if (r > 0.3) return COLORS.stable;
+        if (r > 0.1) return COLORS.poor;
+        return COLORS.endangered;
+    }
+    get radius() {
+        const base = Math.max(3, Math.min(15, 3 + Math.sqrt(this.size) * 3));
+        return base + (this.level - 1) * 2;   // 等级越高圆圈越大
+    }
+    statusText() {
+        if (!this.alive) return '灭绝';
+        const r = this.resourceRatio;
+        return r > 0.6 ? '富足' : r > 0.3 ? '稳定' : r > 0.1 ? '贫瘠' : '濒危';
+    }
+}
+
+function createWorld(params, seedStr) {
+    const seed = hashSeed(seedStr);
+    const rng = mulberry32(seed);
+    const n = Math.max(1, Math.round(params.initialCivs));
+    const W = CONFIG.WORLD_W, H = CONFIG.WORLD_H;
+    const civs = [];
+    const raw = [];
+    for (let i = 0; i < n; i++) {
+        // 环形分布（与原版一致），但在固定世界坐标中
+        const angle = (i / n) * Math.PI * 2 + rng() * 0.5;
+        const radius = 100 + rng() * 200;
+        const x = Math.max(50, Math.min(W - 50, W / 2 + Math.cos(angle) * radius));
+        const y = Math.max(50, Math.min(H - 50, H / 2 + Math.sin(angle) * radius));
+        const share = 0.7 + rng() * 0.6;
+        raw.push(share);
+        civs.push(new Civilization(i, x, y, 0, rng));
+    }
+    // 初始资源按比例分配，使总和严格等于物质总量
+    const sum = raw.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < n; i++) {
+        civs[i].resources = CONFIG.TOTAL_MATTER * raw[i] / sum;
+        civs[i].peakResources = civs[i].resources;
+    }
+    const world = {
+        seed: String(seedStr), rng, civs,
+        cycles: 0,
+        env: 0,                          // 环境中的自由物质
+        initialCount: n,
+        mode: params.mode,
+        grid: new SpatialGrid(W, H, CONFIG.GRID_CELL),
+        gridDirty: true,
+        order: [],
+        buf: [],
+        events: { conflicts: 0, cooperations: 0, alliancesFormed: 0 },
+        history: [], historyEvery: 5,
+        summary: null
+    };
+    world.summary = summarize(world);
+    recordHistory(world, true);
+    return world;
+}
+
+// ============================== SIM ==============================
+const Sim = (function () {
+
+    /* —— 物质账本 ——
+     * 严格守恒：一切消耗流入环境池，一切额外收益只能从环境池取出。
+     * 原版规则：消耗直接消失，合作/击毁奖励凭空产生（与原 axioms.html 一致）。 */
+    function sink(world, amount) {
+        if (amount > 0 && world.mode === 'conserved') world.env += amount;
+    }
+    function source(world, amount) {
+        if (amount <= 0) return 0;
+        if (world.mode !== 'conserved') return amount;
+        const got = Math.min(amount, world.env);
+        world.env -= got;
+        return got;
+    }
+
+    function kill(world, civ, killer) {
+        if (!civ.alive) return;
+        civ.alive = false;
+        if (world.mode === 'conserved') { world.env += Math.max(0, civ.resources); }
+        civ.resources = 0;
+        civ.diedAt = world.cycles;
+        civ.killedBy = killer ? killer.id : -1;
+        // 双向清理关系，避免死亡文明残留在联盟/敌对统计中
+        for (const id of civ.allies) world.civs[id].allies.delete(civ.id);
+        for (const id of civ.enemies) world.civs[id].enemies.delete(civ.id);
+        civ.alliesAtDeath = civ.allies.size;
+        civ.enemiesAtDeath = civ.enemies.size;
+        civ.allies.clear();
+        civ.enemies.clear();
+        world.gridDirty = true;
+    }
+
+    function rebuildGrid(world) {
+        world.grid.clear();
+        for (const c of world.civs) if (c.alive) world.grid.insert(c);
+        world.gridDirty = false;
+    }
+
+    // 公理一：生存是第一需要
+    function survivalDecision(world, civ, p) {
+        const range = p.detectionRange * Math.sqrt(civ.size);
+        const r2 = range * range;
+        const cand = world.grid.query(civ.x, civ.y, range, world.buf);
+        // 先固定本轮感知到的邻居（与原版“先探测再逐个决策”一致）
+        const nearby = [];
+        for (let i = 0; i < cand.length; i++) {
+            const o = cand[i];
+            if (o === civ || !o.alive) continue;
+            const dx = civ.x - o.x, dy = civ.y - o.y;
+            if (dx * dx + dy * dy <= r2) nearby.push(o);
+        }
+        for (let i = 0; i < nearby.length; i++) {
+            const other = nearby[i];
+            if (!other.alive) continue;           // 本轮中可能已被其他文明消灭
+            if (!civ.alive) return;
+            civ.known.add(other.id);
+            // 资源危机时更容易发生冲突
+            const pressure = 1 - civ.resources / Math.max(civ.peakResources, 100);
+            const threshold = p.aggression * (1 + pressure);
+
+            if (civ.resources < 50) {
+                // 濒危状态：必须获取资源
+                if (other.resources > civ.resources && world.rng() < 0.8) attack(world, civ, other, p);
+            } else if (civ.allies.has(other.id)) {
+                cooperate(world, civ, other, p);      // 维持联盟
+            } else if (civ.enemies.has(other.id)) {
+                if (world.rng() < threshold) attack(world, civ, other, p);
+            } else {
+                // 新接触：决定合作或竞争
+                if (world.rng() < p.cooperation * civ.cooperativeness) {
+                    proposeAlliance(world, civ, other);
+                } else if (world.rng() < threshold * civ.aggressiveness) {
+                    attack(world, civ, other, p);
+                }
+            }
+        }
+    }
+
+    function attack(world, civ, target, p) {
+        if (!target.alive) return;
+        const dx = civ.x - target.x, dy = civ.y - target.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        // 攻击成功率取决于距离、大小差异和文明等级
+        const levelAdv = civ.level / Math.max(target.level, 1);
+        const sizeAdv = civ.size / (civ.size + target.size);
+        const distFactor = Math.max(0.1, 1 - distance / (p.detectionRange * 2));
+        const successRate = Math.min(0.8, sizeAdv * distFactor * levelAdv * 0.7);
+        world.events.conflicts++;
+
+        if (world.rng() < successRate) {
+            // 掠夺资源（等级越高掠夺效率越高）
+            const plunderRate = 0.2 + (civ.level - 1) * 0.1;
+            let plunder = Math.min(target.resources * plunderRate, civ.size * 50);
+            if (world.mode === 'conserved') plunder = Math.max(0, Math.min(plunder, target.resources));
+            civ.resources += plunder * 0.8;          // 掠夺有损耗
+            target.resources -= plunder;
+            sink(world, plunder * 0.2);              // 损耗回归环境
+            civ.conflicts++;
+            target.conflicts++;
+            // 建立敌对关系（同时破裂联盟）
+            civ.enemies.add(target.id); target.enemies.add(civ.id);
+            civ.allies.delete(target.id); target.allies.delete(civ.id);
+            if (target.resources <= 0) {
+                kill(world, target, civ);
+                civ.resources += source(world, target.size * 20);   // 获取残骸资源
+            }
+        } else {
+            // 攻击失败，损失资源
+            const loss = Math.min(Math.max(0, civ.resources), civ.size * 10);
+            civ.resources -= loss;
+            sink(world, loss);
+        }
+    }
+
+    function cooperate(world, civ, partner, p) {
+        if (!partner.alive || !civ.allies.has(partner.id)) return;
+        // 资源共享带来效率提升，与文明等级相关
+        const avgLevel = (civ.level + partner.level) / 2;
+        const sharedEff = (civ.efficiency + partner.efficiency) / 2;
+        const bonus = sharedEff * p.cooperation * 10 * avgLevel;
+        civ.resources += source(world, bonus);
+        partner.resources += source(world, bonus);
+        civ.cooperations++;
+        partner.cooperations++;
+        world.events.cooperations++;
+    }
+
+    function proposeAlliance(world, civ, other) {
+        if (!other.alive) return;
+        // 基于相互利益决定是否结盟
+        const mutual = (civ.cooperativeness + other.cooperativeness) / 2;
+        if (world.rng() < mutual) {
+            civ.allies.add(other.id); other.allies.add(civ.id);
+            civ.enemies.delete(other.id); other.enemies.delete(civ.id);   // 解除敌对关系
+            world.events.alliancesFormed++;
+        }
+    }
+
+    // 公理二：增长但物质有限
+    function grow(world, civ, p) {
+        if (!civ.alive) return;
+        civ.age++;
+        // 资源消耗（效率随等级提升）
+        const consumption = civ.size * (2 - civ.efficiency * p.resourceEfficiency);
+        const paid = world.mode === 'conserved' ? Math.min(consumption, Math.max(0, civ.resources)) : consumption;
+        civ.resources -= paid;
+        sink(world, paid);
+        // 增长尝试（需要资源）
+        const growthCost = civ.size * 10;
+        if (civ.resources > growthCost * 2) {
+            civ.resources -= growthCost;
+            sink(world, growthCost);
+            civ.size = Math.min(CONFIG.MAX_SIZE, civ.size * (1 + p.growthRate * 0.01));
+            const lv = Math.floor(civ.size);
+            if (lv > civ.level) civ.level = lv;
+        }
+        // 资源耗尽导致灭绝
+        if (civ.resources <= 0) {
+            // 原版：释放 30% 消耗量到环境
+            if (world.mode !== 'conserved') world.env += Math.max(0, consumption * 0.3);
+            kill(world, civ, null);
+            return;
+        }
+        if (civ.resources > civ.peakResources) civ.peakResources = civ.resources;
+    }
+
+    function redistribute(world) {
+        if (world.env <= 0) return;
+        let alive = 0, wsum = 0;
+        for (const c of world.civs) if (c.alive) { alive++; wsum += c.size * c.efficiency; }
+        if (alive === 0) return;
+        const share = world.env * 0.1;    // 每周期释放 10% 的环境物质
+        if (world.mode === 'conserved') {
+            // 守恒：按 规模×效率 加权回收（更大、更高效的文明收集更多）
+            for (const c of world.civs) if (c.alive) c.resources += share * (c.size * c.efficiency) / wsum;
+        } else {
+            for (const c of world.civs) if (c.alive) c.resources += share / alive;
+        }
+        world.env -= share;
+    }
+
+    function shuffleOrder(world) {
+        // 每周期随机决策顺序，消除原版“下标靠前者先手”的系统性偏差
+        const o = world.order;
+        o.length = 0;
+        for (const c of world.civs) if (c.alive) o.push(c);
+        for (let i = o.length - 1; i > 0; i--) {
+            const j = Math.floor(world.rng() * (i + 1));
+            const t = o[i]; o[i] = o[j]; o[j] = t;
+        }
+        return o;
+    }
+
+    function step(world, p) {
+        world.cycles++;
+        if (world.gridDirty) rebuildGrid(world);
+        // 阶段1：生存决策（公理一）
+        const order = shuffleOrder(world);
+        for (let i = 0; i < order.length; i++) {
+            if (order[i].alive) survivalDecision(world, order[i], p);
+        }
+        // 阶段2：增长与资源消耗（公理二）
+        for (const c of world.civs) grow(world, c, p);
+        // 阶段3：环境物质再分配
+        redistribute(world);
+        world.summary = summarize(world);
+        recordHistory(world, false);
+    }
+
+    return { step, kill, sink, source };
+})();
+
+function summarize(world) {
+    let alive = 0, dead = 0, allyEdges = 0, enemyEdges = 0, civMatter = 0;
+    for (const c of world.civs) {
+        if (c.alive) {
+            alive++;
+            allyEdges += c.allies.size;
+            enemyEdges += c.enemies.size;
+            civMatter += c.resources;
+        } else dead++;
+    }
+    return {
+        alive, dead,
+        alliances: Math.floor(allyEdges / 2),
+        conflicts: Math.floor(enemyEdges / 2),
+        civMatter,
+        env: world.env,
+        totalMatter: civMatter + world.env,
+        civRatio: civMatter / CONFIG.TOTAL_MATTER,
+        crisis: alive > 0 && civMatter / CONFIG.TOTAL_MATTER < CONFIG.CRISIS_RATIO
+    };
+}
+
+function recordHistory(world, force) {
+    if (!force && world.cycles % world.historyEvery !== 0) return;
+    const s = world.summary;
+    world.history.push({ t: world.cycles, alive: s.alive, ratio: s.civRatio, conflicts: s.conflicts });
+    if (world.history.length > CONFIG.HISTORY_MAX) {
+        // 抽稀：保留偶数点，采样间隔翻倍
+        world.history = world.history.filter((_, i) => i % 2 === 0);
+        world.historyEvery *= 2;
+    }
+}
+
+// ============================== RENDER ==============================
+const Render = (function () {
+    let canvas, ctx, dpr = 1, cssW = 1, cssH = 1;
+    const view = { fit: 1, zoom: 1, panX: 0, panY: 0 };
+    let stars = [];
+
+    function init(c) {
+        canvas = c;
+        ctx = canvas.getContext('2d');
+        // 背景星空（纯装饰，不使用模拟 RNG）
+        const r = mulberry32(12345);
+        stars = [];
+        for (let i = 0; i < 220; i++) {
+            stars.push({ x: -400 + r() * (CONFIG.WORLD_W + 800), y: -400 + r() * (CONFIG.WORLD_H + 800), s: r() < 0.9 ? 1 : 1.8, a: 0.15 + r() * 0.45 });
+        }
+    }
+
+    function resize(w, h, ratio) {
+        cssW = Math.max(1, w); cssH = Math.max(1, h);
+        dpr = Math.min(ratio || 1, 3);
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        view.fit = Math.min(cssW / CONFIG.WORLD_W, cssH / CONFIG.WORLD_H) * 0.92;
+    }
+
+    function scale() { return view.fit * view.zoom; }
+    function worldToScreen(x, y) {
+        const s = scale();
+        return { x: (x - CONFIG.WORLD_W / 2) * s + cssW / 2 + view.panX, y: (y - CONFIG.WORLD_H / 2) * s + cssH / 2 + view.panY };
+    }
+    function screenToWorld(x, y) {
+        const s = scale();
+        return { x: (x - cssW / 2 - view.panX) / s + CONFIG.WORLD_W / 2, y: (y - cssH / 2 - view.panY) / s + CONFIG.WORLD_H / 2 };
+    }
+    function zoomAt(sx, sy, factor) {
+        const w = screenToWorld(sx, sy);
+        view.zoom = Math.min(8, Math.max(0.3, view.zoom * factor));
+        const s = scale();
+        view.panX = sx - cssW / 2 - (w.x - CONFIG.WORLD_W / 2) * s;
+        view.panY = sy - cssH / 2 - (w.y - CONFIG.WORLD_H / 2) * s;
+    }
+    function pan(dx, dy) { view.panX += dx; view.panY += dy; }
+    function resetView() { view.zoom = 1; view.panX = 0; view.panY = 0; }
+
+    function pick(world, sx, sy) {
+        const w = screenToWorld(sx, sy);
+        const s = scale();
+        let best = null, bestD = Infinity;
+        for (const c of world.civs) {
+            const dx = c.x - w.x, dy = c.y - w.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            const hit = Math.max(c.radius + 4 / s, 16 / s);  // 触屏友好的最小命中半径
+            if (d <= hit && d < bestD) { best = c; bestD = d; }
+        }
+        return best;
+    }
+
+    function draw(world, params, selectedId) {
+        const s = scale();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.setTransform(dpr * s, 0, 0, dpr * s,
+            dpr * (cssW / 2 + view.panX - CONFIG.WORLD_W / 2 * s),
+            dpr * (cssH / 2 + view.panY - CONFIG.WORLD_H / 2 * s));
+        const px = 1 / s;   // 1 屏幕像素对应的世界单位
+
+        // 星空
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        for (const st of stars) {
+            ctx.globalAlpha = st.a;
+            ctx.fillRect(st.x, st.y, st.s * px, st.s * px);
+        }
+        ctx.globalAlpha = 1;
+
+        // 宇宙边界
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = px;
+        ctx.strokeRect(0, 0, CONFIG.WORLD_W, CONFIG.WORLD_H);
+
+        const civs = world.civs;
+
+        // 探测范围（按颜色批量描边）
+        ctx.lineWidth = px;
+        for (const col in RING_COLORS) {
+            ctx.beginPath();
+            let any = false;
+            for (const c of civs) {
+                if (!c.alive || c.size <= 1 || c.color !== col) continue;
+                const r = params.detectionRange * Math.sqrt(c.size);
+                ctx.moveTo(c.x + r, c.y);
+                ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+                any = true;
+            }
+            if (any) { ctx.strokeStyle = RING_COLORS[col]; ctx.stroke(); }
+        }
+
+        // 合作关系（每对只画一次，单一路径）
+        ctx.beginPath();
+        for (const c of civs) {
+            if (!c.alive) continue;
+            for (const id of c.allies) {
+                if (id < c.id) continue;
+                const o = civs[id];
+                ctx.moveTo(c.x, c.y); ctx.lineTo(o.x, o.y);
+            }
+        }
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
+        ctx.lineWidth = 2 * px;
+        ctx.stroke();
+
+        // 敌对关系
+        ctx.beginPath();
+        for (const c of civs) {
+            if (!c.alive) continue;
+            for (const id of c.enemies) {
+                if (id < c.id) continue;
+                const o = civs[id];
+                ctx.moveTo(c.x, c.y); ctx.lineTo(o.x, o.y);
+            }
+        }
+        ctx.strokeStyle = 'rgba(231, 76, 60, 0.3)';
+        ctx.lineWidth = px;
+        ctx.setLineDash([5 * px, 5 * px]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 选中文明的关系高亮
+        const sel = selectedId >= 0 ? civs[selectedId] : null;
+        if (sel && sel.alive) {
+            ctx.beginPath();
+            for (const id of sel.allies) { ctx.moveTo(sel.x, sel.y); ctx.lineTo(civs[id].x, civs[id].y); }
+            ctx.strokeStyle = 'rgba(46, 204, 113, 0.85)'; ctx.lineWidth = 2.5 * px; ctx.stroke();
+            ctx.beginPath();
+            for (const id of sel.enemies) { ctx.moveTo(sel.x, sel.y); ctx.lineTo(civs[id].x, civs[id].y); }
+            ctx.strokeStyle = 'rgba(231, 76, 60, 0.9)'; ctx.lineWidth = 1.5 * px;
+            ctx.setLineDash([5 * px, 4 * px]); ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        // 文明本体（死亡的先画，按颜色批量填充）
+        const order = [COLORS.dead, COLORS.endangered, COLORS.poor, COLORS.stable, COLORS.rich];
+        for (const col of order) {
+            ctx.beginPath();
+            let any = false;
+            for (const c of civs) {
+                if (c.color !== col) continue;
+                const r = c.radius;
+                ctx.moveTo(c.x + r, c.y);
+                ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+                any = true;
+            }
+            if (any) { ctx.fillStyle = col; ctx.fill(); }
+        }
+
+        if (sel) {
+            ctx.beginPath();
+            ctx.arc(sel.x, sel.y, sel.radius + 5 * px, 0, Math.PI * 2);
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 * px; ctx.stroke();
+            if (sel.alive) {
+                ctx.beginPath();
+                ctx.arc(sel.x, sel.y, params.detectionRange * Math.sqrt(sel.size), 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = px;
+                ctx.setLineDash([3 * px, 6 * px]); ctx.stroke(); ctx.setLineDash([]);
+            }
+        }
+    }
+
+    return { init, resize, draw, pick, pan, zoomAt, resetView, view };
+})();
+
+// ============================== 历史曲线 ==============================
+const Chart = (function () {
+    let canvas, ctx, w = 1, h = 1, dpr = 1;
+    function init(c) { canvas = c; ctx = c.getContext('2d'); }
+    function resize(ratio) {
+        dpr = Math.min(ratio || 1, 3);
+        w = Math.max(1, canvas.clientWidth || 190);
+        h = Math.max(1, canvas.clientHeight || 60);
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+    }
+    function line(hist, get, max, color) {
+        const n = hist.length;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+            const x = n === 1 ? w : (i / (n - 1)) * w;
+            const v = Math.max(0, Math.min(1, get(hist[i]) / max));
+            const y = h - 2 - v * (h - 4);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    function draw(world) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(0, h / 2 + 0.5); ctx.lineTo(w, h / 2 + 0.5); ctx.stroke();
+        const hist = world.history;
+        if (!hist.length) return;
+        let maxC = 1;
+        for (const p of hist) if (p.conflicts > maxC) maxC = p.conflicts;
+        line(hist, p => p.conflicts, maxC, '#e74c3c');
+        line(hist, p => p.ratio, 1, '#4ecdc4');
+        line(hist, p => p.alive, world.initialCount, '#2ecc71');
+    }
+    return { init, resize, draw };
+})();
+
+// ============================== UI ==============================
+const UI = (function () {
+    const $ = id => document.getElementById(id);
+    const els = {};
+    const last = {};      // 上次写入的文本，避免重复写 DOM
+
+    function setText(el, key, text) {
+        if (last[key] === text) return;
+        last[key] = text;
+        el.textContent = text;
+    }
+
+    function buildParams(params, onChange) {
+        const host = $('param-groups');
+        const groups = [];
+        for (const d of PARAM_DEFS) if (!groups.includes(d.group)) groups.push(d.group);
+        let html = '';
+        for (const g of groups) {
+            html += '<div class="parameter-group"><h3>' + g + '</h3>';
+            for (const d of PARAM_DEFS.filter(x => x.group === g)) {
+                html += '<div class="parameter"><div class="parameter-row"><label for="' + d.id + '">' + d.label +
+                    (d.hint ? '<span class="hint">' + d.hint + '</span>' : '') + '</label>' +
+                    '<span class="parameter-value" id="' + d.id + '-value"></span></div>' +
+                    '<input type="range" id="' + d.id + '" min="' + d.min + '" max="' + d.max + '" step="' + d.step + '" value="' + params[d.key] + '"></div>';
+            }
+            html += '</div>';
+        }
+        host.innerHTML = html;
+        for (const d of PARAM_DEFS) {
+            const input = $(d.id), out = $(d.id + '-value');
+            const sync = () => {
+                const v = parseFloat(input.value);
+                if (!isFinite(v)) return;
+                params[d.key] = v;
+                out.textContent = v.toFixed(d.digits);
+                onChange(d.key, v);
+            };
+            input.addEventListener('input', sync);
+            out.textContent = Number(params[d.key]).toFixed(d.digits);
+        }
+    }
+
+    function init() {
+        for (const id of ['alive-civs', 'extinct-civs', 'alliances', 'conflicts', 'cycles', 'civ-matter', 'total-matter',
+            'crisis-indicator', 'inspector', 'start-btn', 'qb-play', 'seed-input', 'rule-mode', 'rule-note', 'hint-toast'])
+            els[id] = $(id);
+    }
+
+    function updateStats(world, running) {
+        const s = world.summary;
+        setText(els['alive-civs'], 'alive', String(s.alive));
+        setText(els['extinct-civs'], 'dead', String(s.dead));
+        setText(els['alliances'], 'all', String(s.alliances));
+        setText(els['conflicts'], 'con', String(s.conflicts));
+        setText(els['cycles'], 'cyc', String(world.cycles));
+        setText(els['civ-matter'], 'cm', s.civRatio > 10 ? s.civRatio.toFixed(0) + '×' : (s.civRatio * 100).toFixed(1) + '%');
+        setText(els['total-matter'], 'tm', compact(s.totalMatter) + (world.mode === 'conserved' ? '' : ' ⚠'));
+
+        let crisis = '';
+        if (s.alive === 0) crisis = 'extinct';
+        else if (s.crisis) crisis = 'crisis';
+        if (last.crisis !== crisis) {
+            last.crisis = crisis;
+            const el = els['crisis-indicator'];
+            el.classList.toggle('active', crisis !== '');
+            el.classList.toggle('extinct', crisis === 'extinct');
+            el.textContent = crisis === 'extinct' ? '所有文明均已灭绝 · 第 ' + world.cycles + ' 周期' : '资源危机！文明开始争夺稀缺资源';
+        }
+        setPlaying(running);
+    }
+
+    function setPlaying(running) {
+        const t = running ? '暂停' : '启动';
+        setText(els['start-btn'], 'play', t);
+        setText(els['qb-play'], 'qbplay', running ? '⏸' : '▶');
+    }
+
+    function fmt(v, d) { return Number(v).toFixed(d); }
+    function compact(v) {
+        if (v >= 1e8) return (v / 1e8).toFixed(1) + '亿';
+        if (v >= 1e5) return (v / 1e4).toFixed(0) + '万';
+        return v.toFixed(0);
+    }
+
+    function updateInspector(world, selectedId) {
+        const el = els['inspector'];
+        if (selectedId < 0) {
+            if (last.insp !== '') { last.insp = ''; el.classList.remove('active'); el.innerHTML = ''; }
+            return;
+        }
+        const c = world.civs[selectedId];
+        let aliveKnown = 0;
+        for (const id of c.known) if (world.civs[id].alive) aliveKnown++;
+        const ratio = Math.max(0, Math.min(1, c.resourceRatio));
+        const rows = [
+            ['状态', c.statusText() + (c.alive ? '' : (c.killedBy >= 0 ? '（被 #' + c.killedBy + ' 消灭）' : '（资源耗尽）'))],
+            ['资源', fmt(c.resources, 1) + ' / 峰值 ' + fmt(c.peakResources, 0)],
+            ['规模 · 等级', fmt(c.size, 2) + ' · Lv' + c.level],
+            ['效率', fmt(c.efficiency, 2)],
+            ['攻击性 · 合作性', fmt(c.aggressiveness, 2) + ' · ' + fmt(c.cooperativeness, 2)],
+            ['年龄', c.alive ? c.age + ' 周期' : c.age + '（灭绝于第 ' + c.diedAt + ' 周期）'],
+            ['盟友 · 敌人', c.alive ? c.allies.size + ' · ' + c.enemies.size : '—'],
+            ['已知存活文明', String(aliveKnown)],
+            ['冲突 · 合作次数', c.conflicts + ' · ' + c.cooperations]
+        ];
+        let html = '<h4><span><span class="dot" style="background:' + c.color + '"></span>文明 #' + c.id + '</span>' +
+            '<button class="close" type="button" data-close="1" aria-label="关闭">✕</button></h4>' +
+            '<div class="bar"><div style="width:' + (ratio * 100).toFixed(1) + '%;background:' + c.color + '"></div></div>';
+        for (const r of rows) html += '<div class="row"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>';
+        if (last.insp !== html) {
+            last.insp = html;
+            el.innerHTML = html;
+            el.classList.add('active');
+        }
+    }
+
+    function setRuleNote(mode) {
+        els['rule-note'].textContent = mode === 'conserved'
+            ? '消耗、损耗流入环境，合作收益与残骸只能从环境中回收：文明与环境的物质之和恒为 10000。'
+            : '与原 axioms.html 相同：消耗直接消失，合作与击毁奖励凭空产生，物质总量会变化。';
+    }
+
+    return { init, buildParams, updateStats, updateInspector, setPlaying, setRuleNote, els };
+})();
+
+// ============================== APP ==============================
+const App = (function () {
+    const params = defaultParams();
+    let world = null;
+    let running = false;
+    let acc = 0, lastT = 0, lastUI = 0;
+    let dirty = true;
+    let selectedId = -1;
+    let seedStr = '';
+
+    function readSeedFromURL() {
+        try {
+            const q = new URLSearchParams(global.location.search);
+            const s = q.get('seed');
+            if (s !== null && s.trim() !== '') return s.trim();
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+    function writeSeedToURL(s) {
+        try {
+            const url = new URL(global.location.href);
+            url.searchParams.set('seed', s);
+            global.history.replaceState(null, '', url.toString());
+        } catch (e) { /* file:// 等环境可能不允许，忽略 */ }
+    }
+
+    function reset() {
+        const input = UI.els['seed-input'];
+        if (input && input.value.trim() !== '') seedStr = input.value.trim();
+        if (!seedStr) seedStr = randomSeedString();
+        if (input) input.value = seedStr;
+        writeSeedToURL(seedStr);
+        world = createWorld(params, seedStr);
+        selectedId = -1;
+        acc = 0;
+        dirty = true;
+        refreshUI(true);
+    }
+
+    function stepOnce() {
+        if (!world || world.summary.alive === 0) return;
+        Sim.step(world, params);
+        dirty = true;
+    }
+
+    function setRunning(v) {
+        running = v && world.summary.alive > 0;
+        acc = 0;
+        UI.setPlaying(running);
+    }
+
+    function refreshUI(chartToo) {
+        UI.updateStats(world, running);
+        UI.updateInspector(world, selectedId);
+        if (chartToo !== false) Chart.draw(world);
+    }
+
+    function frame(now) {
+        const dt = lastT ? Math.min(0.25, (now - lastT) / 1000) : 0;
+        lastT = now;
+        if (running) {
+            acc += dt * params.simulationSpeed * CONFIG.STEPS_PER_SPEED;
+            let n = Math.floor(acc);
+            acc -= n;
+            if (n > CONFIG.MAX_STEPS_PER_FRAME) { n = CONFIG.MAX_STEPS_PER_FRAME; acc = 0; }
+            for (let i = 0; i < n; i++) {
+                Sim.step(world, params);
+                if (world.summary.alive === 0) { running = false; break; }
+            }
+            if (n > 0) dirty = true;
+        }
+        if (dirty) {
+            Render.draw(world, params, selectedId);
+            dirty = false;
+        }
+        if (now - lastUI >= CONFIG.UI_INTERVAL_MS) {
+            lastUI = now;
+            refreshUI(true);
+        }
+        global.requestAnimationFrame(frame);
+    }
+
+    function forceUI() { lastUI = 0; dirty = true; }
+
+    function setupCanvas() {
+        const canvas = document.getElementById('universe-canvas');
+        const space = document.getElementById('simulation-space');
+        const chartCanvas = document.getElementById('history-chart');
+        Render.init(canvas);
+        Chart.init(chartCanvas);
+        const doResize = () => {
+            const r = space.getBoundingClientRect();
+            Render.resize(r.width, r.height, global.devicePixelRatio || 1);
+            Chart.resize(global.devicePixelRatio || 1);
+            dirty = true;
+            if (world) Chart.draw(world);
+        };
+        doResize();
+        if (typeof global.ResizeObserver === 'function') new global.ResizeObserver(doResize).observe(space);
+        global.addEventListener('resize', doResize);
+        // devicePixelRatio 变化（拖到另一块屏幕 / 浏览器缩放）
+        if (global.matchMedia) {
+            const watchDpr = () => {
+                const mq = global.matchMedia('(resolution: ' + (global.devicePixelRatio || 1) + 'dppx)');
+                const h = () => { doResize(); watchDpr(); };
+                if (mq.addEventListener) mq.addEventListener('change', h, { once: true });
+            };
+            watchDpr();
+        }
+        setupPointer(canvas);
+    }
+
+    function setupPointer(canvas) {
+        const pts = new Map();
+        let moved = false, startX = 0, startY = 0, pinchDist = 0;
+        const local = e => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+
+        canvas.addEventListener('pointerdown', e => {
+            canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+            const p = local(e);
+            pts.set(e.pointerId, p);
+            if (pts.size === 1) { moved = false; startX = p.x; startY = p.y; }
+            if (pts.size === 2) {
+                const [a, b] = [...pts.values()];
+                pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
+                moved = true;
+            }
+        });
+        canvas.addEventListener('pointermove', e => {
+            if (!pts.has(e.pointerId)) return;
+            const p = local(e);
+            const prev = pts.get(e.pointerId);
+            pts.set(e.pointerId, p);
+            if (pts.size === 1) {
+                if (!moved && Math.hypot(p.x - startX, p.y - startY) > 6) { moved = true; canvas.classList.add('dragging'); }
+                if (moved) { Render.pan(p.x - prev.x, p.y - prev.y); dirty = true; }
+            } else if (pts.size === 2) {
+                const [a, b] = [...pts.values()];
+                const d = Math.hypot(a.x - b.x, a.y - b.y);
+                if (pinchDist > 0 && d > 0) Render.zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / pinchDist);
+                pinchDist = d;
+                dirty = true;
+            }
+        });
+        const end = e => {
+            if (!pts.has(e.pointerId)) return;
+            const p = local(e);
+            pts.delete(e.pointerId);
+            if (pts.size === 0) {
+                canvas.classList.remove('dragging');
+                if (!moved && e.type === 'pointerup') {
+                    const c = Render.pick(world, p.x, p.y);
+                    selectedId = c ? (c.id === selectedId ? -1 : c.id) : -1;
+                    hideHint();
+                    forceUI();
+                }
+            }
+            if (pts.size < 2) pinchDist = 0;
+        };
+        canvas.addEventListener('pointerup', end);
+        canvas.addEventListener('pointercancel', end);
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const p = local(e);
+            Render.zoomAt(p.x, p.y, Math.exp(-e.deltaY * 0.0015));
+            dirty = true;
+        }, { passive: false });
+        canvas.addEventListener('dblclick', () => { Render.resetView(); dirty = true; });
+    }
+
+    function hideHint() { const h = UI.els['hint-toast']; if (h) h.style.display = 'none'; }
+
+    function setupControls() {
+        UI.buildParams(params, (key) => {
+            if (key !== 'initialCivs' && key !== 'simulationSpeed') dirty = true;   // 探测范围等影响绘制
+        });
+        const $ = id => document.getElementById(id);
+        const togglePlay = () => { setRunning(!running); forceUI(); };
+        const doStep = () => { setRunning(false); stepOnce(); forceUI(); };
+        const doReset = () => { setRunning(false); reset(); };
+
+        $('start-btn').addEventListener('click', togglePlay);
+        $('step-btn').addEventListener('click', doStep);
+        $('reset-btn').addEventListener('click', doReset);
+        $('qb-play').addEventListener('click', togglePlay);
+        $('qb-step').addEventListener('click', doStep);
+        $('qb-reset').addEventListener('click', doReset);
+
+        const rule = $('rule-mode');
+        rule.value = params.mode;
+        UI.setRuleNote(params.mode);
+        rule.addEventListener('change', () => {
+            params.mode = rule.value;
+            UI.setRuleNote(params.mode);
+            doReset();             // 规则切换需要从头开始，否则账本不一致
+        });
+
+        $('seed-random').addEventListener('click', () => {
+            $('seed-input').value = randomSeedString();
+            doReset();
+        });
+        $('seed-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doReset(); } });
+
+        $('inspector').addEventListener('click', e => {
+            if (e.target && e.target.getAttribute && e.target.getAttribute('data-close')) { selectedId = -1; forceUI(); }
+        });
+
+        // 抽屉（窄屏）
+        const panel = $('control-panel'), backdrop = $('drawer-backdrop');
+        const setDrawer = open => { panel.classList.toggle('open', open); backdrop.classList.toggle('open', open); };
+        $('qb-panel').addEventListener('click', () => setDrawer(!panel.classList.contains('open')));
+        $('drawer-close').addEventListener('click', () => setDrawer(false));
+        backdrop.addEventListener('click', () => setDrawer(false));
+
+        // 窄屏默认收起图例
+        if (global.matchMedia && global.matchMedia('(max-width: 768px)').matches) $('legend').removeAttribute('open');
+
+        document.addEventListener('keydown', e => {
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+            if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+            else if (e.key === 'ArrowRight' || e.key === 's' || e.key === 'S') { e.preventDefault(); doStep(); }
+            else if (e.key === 'r' || e.key === 'R') doReset();
+            else if (e.key === 'Escape') { selectedId = -1; setDrawer(false); forceUI(); }
+        });
+    }
+
+    function boot() {
+        UI.init();
+        seedStr = readSeedFromURL() || randomSeedString();
+        UI.els['seed-input'].value = seedStr;
+        setupControls();
+        setupCanvas();
+        reset();
+        global.requestAnimationFrame(frame);
+    }
+
+    return { boot, get world() { return world; }, params };
+})();
+
+// 供调试 / Node 测试使用
+global.Cosmos = { CONFIG, PARAM_DEFS, defaultParams, createWorld, Sim, Render, Chart, UI, App, SpatialGrid, mulberry32, hashSeed, summarize };
+
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', App.boot);
+    else App.boot();
+}
+
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+</body>
+</html>
