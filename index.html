@@ -186,6 +186,20 @@ button, select, input { font: inherit; }
 .inspector .bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; margin: 2px 0 7px; overflow: hidden; }
 .inspector .bar > div { height: 100%; background: var(--accent); }
 
+.chronicle { top: 20px; left: 20px; width: 290px; max-height: 46%; display: flex; flex-direction: column; padding: 12px 14px; z-index: 4; }
+.chronicle summary { cursor: pointer; font-size: 0.88rem; color: var(--accent); list-style: none; user-select: none; }
+.chronicle summary::-webkit-details-marker { display: none; }
+.chronicle summary::before { content: '▸ '; }
+.chronicle[open] summary::before { content: '▾ '; }
+.chron-sub { font-size: 0.72rem; color: #777; margin: 4px 0 6px; }
+.chron-list { list-style: none; overflow-y: auto; font-size: 0.78rem; line-height: 1.45; padding-right: 4px; }
+.chron-list li { padding: 4px 6px; border-radius: 6px; cursor: pointer; color: #bbb; display: flex; gap: 8px; }
+.chron-list li:hover { background: rgba(255,255,255,0.06); }
+.chron-list li.major { color: #fff; }
+.chron-list li.pre { opacity: 0.55; }
+.chron-list li .t { color: #666; font-variant-numeric: tabular-nums; min-width: 42px; flex: none; }
+.chron-list li .k { flex: none; }
+.chron-list li.cut { cursor: default; color: var(--accent); justify-content: center; font-size: 0.72rem; }
 .hint-toast {
     position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
     font-size: 0.75rem; color: #888; pointer-events: none; white-space: nowrap;
@@ -220,6 +234,8 @@ button, select, input { font: inherit; }
         left: 8px; transform: none; top: calc(8px + env(safe-area-inset-top));
         max-width: calc(100% - 192px); font-size: 0.75rem; padding: 7px 10px;
     }
+    .chronicle { left: 8px; top: calc(56px + env(safe-area-inset-top)); width: calc(100% - 192px); max-height: 38%; padding: 8px 10px; }
+    .chron-list { font-size: 0.72rem; }
     .inspector { right: 8px; left: auto; bottom: calc(70px + env(safe-area-inset-bottom)); width: 190px; font-size: 0.76rem; }
     .hint-toast { display: none; }
     .quickbar {
@@ -256,6 +272,7 @@ button, select, input { font: inherit; }
             <ol>
                 <li>生存是文明的第一需要</li>
                 <li>文明不断增长和扩张，但宇宙中的物质总量保持不变</li>
+                <li>信息与航行都不能超过光速</li>
             </ol>
         </div>
 
@@ -265,14 +282,11 @@ button, select, input { font: inherit; }
         <div class="parameter-group">
             <h3>宇宙设定</h3>
             <div class="parameter">
-                <div class="parameter-row"><label for="rule-mode">资源规则</label></div>
+                <div class="parameter-row"><label>今日宇宙</label><span class="hint">每天一个，人人相同</span></div>
                 <div class="field">
-                    <select id="rule-mode">
-                        <option value="conserved">严格守恒（公理二）</option>
-                        <option value="legacy">原版规则</option>
-                    </select>
+                    <button class="small-btn" id="daily-btn" type="button" style="flex:1">📅 打开今天的宇宙切片</button>
                 </div>
-                <p class="rule-note" id="rule-note"></p>
+                <p class="rule-note">按日期生成宇宙，直接跳到它历史中随机的一段，右侧「大事件」列出到此为止的宇宙编年史。</p>
             </div>
             <div class="parameter">
                 <div class="parameter-row"><label for="seed-input">随机种子</label><span class="hint">重置后生效，可写入 ?seed=</span></div>
@@ -295,13 +309,16 @@ button, select, input { font: inherit; }
     <main class="simulation-space" id="simulation-space">
         <canvas id="universe-canvas" aria-label="宇宙模拟画布"></canvas>
 
-        <div class="crisis-indicator" id="crisis-indicator">资源危机！文明开始争夺稀缺资源</div>
+        <div class="crisis-indicator" id="crisis-indicator">资源枯竭！恒星中的可用物质所剩无几</div>
 
         <div class="card stats-overlay">
             <div class="stat-item"><span class="stat-label">存活文明</span><span class="stat-value" id="alive-civs">0</span></div>
             <div class="stat-item"><span class="stat-label">灭绝文明</span><span class="stat-value" id="extinct-civs">0</span></div>
             <div class="stat-item"><span class="stat-label">合作联盟</span><span class="stat-value" id="alliances">0</span></div>
             <div class="stat-item"><span class="stat-label">战争冲突</span><span class="stat-value" id="conflicts">0</span></div>
+            <div class="stat-item"><span class="stat-label">星际文明</span><span class="stat-value" id="spacefaring">0</span></div>
+            <div class="stat-item"><span class="stat-label">未诞生</span><span class="stat-value" id="unborn">0</span></div>
+            <div class="stat-item"><span class="stat-label">航行中</span><span class="stat-value" id="fleets">0</span></div>
             <div class="stat-item"><span class="stat-label">演化周期</span><span class="stat-value" id="cycles">0</span></div>
             <div class="stat-item"><span class="stat-label">文明持有物质</span><span class="stat-value" id="civ-matter">0%</span></div>
             <div class="stat-item"><span class="stat-label">宇宙物质总量</span><span class="stat-value" id="total-matter">10000</span></div>
@@ -324,8 +341,19 @@ button, select, input { font: inherit; }
             <div class="legend-item"><div class="legend-color" style="background:#555"></div><span>灭绝文明</span></div>
             <div class="legend-item"><div class="legend-line"></div><span>合作关系</span></div>
             <div class="legend-item"><div class="legend-line enemy"></div><span>敌对关系</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:none;border:1px solid rgba(255,255,255,.5)"></div><span>空心外圈：尚未进入星际时代</span></div>
+            <div class="legend-item"><div class="legend-color" style="width:6px;height:6px;margin:0 13px 0 3px;border-radius:0;background:#fff5d2"></div><span>恒星（染色 = 疆域）</span></div>
+            <div class="legend-item"><div class="legend-line" style="border-color:#ff5a50"></div><span>舰队</span></div>
+            <div class="legend-item"><div class="legend-line" style="border-color:#5adcff"></div><span>殖民船</span></div>
+            <div class="legend-item"><div class="legend-line" style="border-color:#fff;border-top-width:1px"></div><span>光速信使</span></div>
+            <div class="legend-item"><div class="legend-color" style="background:none;border:1px solid rgba(180,200,255,.5)"></div><span>广播信号的光速波前</span></div>
         </details>
 
+        <details class="card chronicle" id="chronicle" open>
+            <summary id="chron-title">宇宙大事件</summary>
+            <div id="chron-sub" class="chron-sub"></div>
+            <ol id="chron-list" class="chron-list"></ol>
+        </details>
         <div class="card inspector" id="inspector" aria-live="polite"></div>
         <div class="hint-toast" id="hint-toast">点击任意文明查看详情</div>
 
@@ -353,25 +381,29 @@ button, select, input { font: inherit; }
 // ============================== CONFIG ==============================
 const CONFIG = {
     WORLD_W: 800,
-    WORLD_H: 800,
-    TOTAL_MATTER: 10000,        // 宇宙物质总量（公理二）
-    MAX_SIZE: 10,               // 增长上限
-    GRID_CELL: 80,              // 空间网格单元（世界单位）
-    STEPS_PER_SPEED: 1.2,       // 速度 50 ≈ 60 步/秒（与原版 60fps 下相当）
-    MAX_STEPS_PER_FRAME: 12,    // 防止“死亡螺旋”
-    UI_INTERVAL_MS: 250,        // 统计面板刷新间隔
-    HISTORY_MAX: 400,           // 曲线最多点数（满后抽稀）
-    CRISIS_RATIO: 0.3
+    WORLD_H: 800,               // 宇宙首尾相接（环面）：从右边出去会从左边回来
+    TOTAL_MATTER: 10000,        // 宇宙物质总量（公理二），恒定
+    STAR_COUNT: 150,            // 恒星系数量：物质只存在于恒星、文明、舰队与星际介质中
+    LIGHT_SPEED: 4,             // 光速（世界单位 / 周期）：信息最快的传播速度
+    BIRTH_SPAN: 900,            // 文明在 [0, BIRTH_SPAN) 周期内陆续诞生
+    STEPS_PER_SPEED: 1.2,       // 速度 50 ≈ 60 步/秒
+    MAX_STEPS_PER_FRAME: 12,
+    UI_INTERVAL_MS: 250,
+    HISTORY_MAX: 400,
+    EVENTS_MAX: 400,
+    CRISIS_RATIO: 0.25          // 恒星剩余物质低于此比例 → 资源枯竭
 };
 
 const PARAM_DEFS = [
-    { group: '初始参数', key: 'initialCivs',        id: 'initial-civs',        label: '初始文明数量', min: 5,   max: 50,  step: 1,    value: 20,  digits: 0, hint: '重置后生效' },
-    { group: '竞争参数', key: 'aggression',         id: 'aggression',          label: '攻击倾向',     min: 0,   max: 1,   step: 0.05, value: 0.3, digits: 2 },
+    { group: '初始参数', key: 'initialCivs',        id: 'initial-civs',        label: '文明总数（陆续诞生）', min: 5, max: 50, step: 1, value: 24, digits: 0, hint: '重置后生效' },
+    { group: '竞争参数', key: 'aggression',         id: 'aggression',          label: '攻击倾向',     min: 0,   max: 1,   step: 0.05, value: 0.4, digits: 2 },
     { group: '竞争参数', key: 'cooperation',        id: 'cooperation',         label: '合作倾向',     min: 0,   max: 1,   step: 0.05, value: 0.5, digits: 2 },
+    { group: '竞争参数', key: 'suspicion',          id: 'suspicion',           label: '猜疑程度',     min: 0,   max: 1,   step: 0.05, value: 0.5, digits: 2, hint: '越高越倾向先下手' },
     { group: '竞争参数', key: 'growthRate',         id: 'growth-rate',         label: '增长速率',     min: 0.5, max: 3,   step: 0.1,  value: 1.5, digits: 1 },
     { group: '生存参数', key: 'resourceEfficiency', id: 'resource-efficiency', label: '资源利用效率', min: 0.1, max: 1,   step: 0.05, value: 0.5, digits: 2 },
-    { group: '生存参数', key: 'contactLevel',       id: 'contact-level',       label: '星际接触门槛', min: 1,   max: 8,   step: 1,    value: 3,   digits: 0, hint: '等级达到后才能探测、接触和星际航行' },
-    { group: '生存参数', key: 'detectionRange',     id: 'detection-range',     label: '探测范围',     min: 50,  max: 300, step: 10,   value: 150, digits: 0 },
+    { group: '生存参数', key: 'contactLevel',       id: 'contact-level',       label: '星际接触门槛', min: 1,   max: 6,   step: 1,    value: 3,   digits: 0, hint: '达到该科技等级才能探测、接触与航行' },
+    { group: '生存参数', key: 'detectionRange',     id: 'detection-range',     label: '探测范围',     min: 50,  max: 300, step: 10,  value: 140, digits: 0 },
+    { group: '生存参数', key: 'disasterRate',       id: 'disaster-rate',       label: '天灾频率',     min: 0,   max: 3,   step: 0.1,  value: 1,   digits: 1, hint: '超新星、内乱的相对频率' },
     { group: '模拟控制', key: 'simulationSpeed',    id: 'simulation-speed',    label: '模拟速度',     min: 1,   max: 100, step: 1,    value: 50,  digits: 0, hint: '≈ 速度×1.2 步/秒' }
 ];
 
@@ -384,97 +416,95 @@ function defaultParams() {
 const COLORS = {
     rich: '#2ecc71', stable: '#3498db', poor: '#f39c12', endangered: '#e74c3c', dead: '#555555'
 };
-const RING_COLORS = {   // 探测范围圈（原版为颜色 + '20' 透明度）
+const RING_COLORS = {
     '#2ecc71': 'rgba(46,204,113,0.125)', '#3498db': 'rgba(52,152,219,0.125)',
     '#f39c12': 'rgba(243,156,18,0.125)', '#e74c3c': 'rgba(231,76,60,0.125)'
 };
+const LEVEL_NAMES = ['', '农业时代', '工业时代', '星际时代', '殖民时代', '星系时代', '星团时代', '跨星系时代', '神级文明'];
+function levelName(lv) { return LEVEL_NAMES[Math.min(lv, LEVEL_NAMES.length - 1)] || ('Lv' + lv); }
 
 // ============================== RNG ==============================
 function hashSeed(str) {               // FNV-1a，字符串 → uint32
-    str = String(str);
-    if (/^\d+$/.test(str) && Number(str) <= 0xFFFFFFFF) return Number(str) >>> 0;
-    let h = 0x811c9dc5;
-    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
     return h >>> 0;
 }
 function mulberry32(a) {
-    a = a >>> 0;
     return function () {
-        a = (a + 0x6D2B79F5) | 0;
-        let t = Math.imul(a ^ (a >>> 15), 1 | a);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
     };
 }
 function randomSeedString() { return String(Math.floor(Math.random() * 1e9)); }
 
-// ============================== 空间网格 ==============================
+// ============================== 环面几何 ==============================
+/** 环面上从 a 指向 b 的最短位移 */
+function wrapDelta(d, size) { d %= size; if (d > size / 2) d -= size; else if (d < -size / 2) d += size; return d; }
+function torusDX(ax, bx) { return wrapDelta(bx - ax, CONFIG.WORLD_W); }
+function torusDY(ay, by) { return wrapDelta(by - ay, CONFIG.WORLD_H); }
+function torusDist(ax, ay, bx, by) { const dx = torusDX(ax, bx), dy = torusDY(ay, by); return Math.sqrt(dx * dx + dy * dy); }
+function wrapX(x) { const W = CONFIG.WORLD_W; return ((x % W) + W) % W; }
+function wrapY(y) { const H = CONFIG.WORLD_H; return ((y % H) + H) % H; }
+
+// （保留导出供旧测试使用；新版文明数很少，直接 O(n²)）
 class SpatialGrid {
-    constructor(w, h, cell) {
-        this.cell = cell;
-        this.cols = Math.max(1, Math.ceil(w / cell));
-        this.rows = Math.max(1, Math.ceil(h / cell));
-        this.cells = new Array(this.cols * this.rows);
-        for (let i = 0; i < this.cells.length; i++) this.cells[i] = [];
-    }
-    clear() { for (const c of this.cells) c.length = 0; }
-    _cx(x) { return Math.min(this.cols - 1, Math.max(0, Math.floor(x / this.cell))); }
-    _cy(y) { return Math.min(this.rows - 1, Math.max(0, Math.floor(y / this.cell))); }
-    insert(item) { this.cells[this._cy(item.y) * this.cols + this._cx(item.x)].push(item); }
-    /** 把半径 r 内可能的候选写入 out（调用方仍需精确距离判断） */
-    query(x, y, r, out) {
-        out.length = 0;
-        const x0 = this._cx(x - r), x1 = this._cx(x + r);
-        const y0 = this._cy(y - r), y1 = this._cy(y + r);
-        for (let cy = y0; cy <= y1; cy++) {
-            const base = cy * this.cols;
-            for (let cx = x0; cx <= x1; cx++) {
-                const cell = this.cells[base + cx];
-                for (let i = 0; i < cell.length; i++) out.push(cell[i]);
-            }
-        }
-        return out;
-    }
+    constructor(w, h, cell) { this.cell = cell; this.items = []; }
+    clear() { this.items.length = 0; }
+    insert(item) { this.items.push(item); }
+    query(x, y, r, out) { out.length = 0; for (const it of this.items) out.push(it); return out; }
 }
 
-/** 星际航程：等级未达门槛的文明还困在母星，无法探测或接触他人；
- *  达到门槛后航程随规模增长（门槛为 1 时与原版公式一致）。 */
+/** 主动探测 / 航行半径：未达门槛为 0；达到后每高一级 +40% */
 function contactRange(civ, p) {
     const gate = Math.max(1, p.contactLevel || 1);
     if (!civ.alive || civ.level < gate) return 0;
-    return p.detectionRange * Math.sqrt(civ.size / gate);
+    return p.detectionRange * (1 + 0.4 * (civ.level - gate)) * (1 + 0.04 * Math.min(10, civ.stars.size - 1));
 }
+function fleetSpeed(level) { return Math.min(CONFIG.LIGHT_SPEED * 0.6, 0.8 + 0.25 * level); }
 
 // ============================== STATE ==============================
 class Civilization {
-    constructor(id, x, y, resources, rng) {
+    constructor(id, rng) {
         this.id = id;
-        this.x = x;
-        this.y = y;
-        this.resources = resources;
-        this.alive = true;
+        this.x = 0; this.y = 0;
+        this.home = -1;
+        this.bornAt = 0;
+        this.born = false;
+        this.alive = false;
+        this.resources = 0;
         this.age = 0;
         this.size = 1;
-        this.level = 1;                       // 文明等级
-        // 生存策略参数
+        this.tech = 1;                        // 科技（连续值），等级 = floor(tech)
+        this.level = 1;
+        this.levelLog = [[0, 1]];             // [周期, 等级]：供光速延迟的“看到的过去”查询
+        // 性格
         this.aggressiveness = rng();
         this.cooperativeness = rng();
         this.baseEfficiency = 0.3 + rng() * 0.4;
-        this.growthFactor = 0.3 + rng() * 1.4;    // 发展速度倍率：有的文明起飞快，有的停滞很久
-        // 关系网络（存 id，死亡时双向清理）
+        this.growthFactor = 0.3 + rng() * 1.4;   // 发展快慢
+        this.silent = rng() < 0.35;              // 静默策略：不主动广播自己的存在
+        this.hue = (id * 137.508) % 360;
+        // 关系
+        this.stars = new Set();
         this.allies = new Set();
         this.enemies = new Set();
-        this.known = new Set();
-        // 发展历史
-        this.peakResources = resources;
+        this.known = new Map();               // id → { since, seenLevel }
+        this.sigStart = -1;                   // 开始向外泄露电磁信号的周期
+        this.pending = new Set();             // 已有舰队/信使在路上的目标（避免重复派遣）
+        this.colonyShips = 0;
+        // 历史
+        this.peakResources = 1;
         this.conflicts = 0;
         this.cooperations = 0;
         this.diedAt = -1;
         this.killedBy = -1;
+        this.cause = '';
     }
-    /** 当前实际效率（基础效率 + 等级加成） */
-    get efficiency() { return Math.min(0.9, this.baseEfficiency + (this.level - 1) * 0.1); }
-    get resourceRatio() { return this.resources / Math.max(this.peakResources, 100); }
+    get efficiency() { return Math.min(0.9, this.baseEfficiency + (this.level - 1) * 0.06); }
+    get resourceRatio() { return this.resources / Math.max(this.peakResources, 60); }
+    get loud() { return this.alive && this.sigStart >= 0; }
     get color() {
         if (!this.alive) return COLORS.dead;
         const r = this.resourceRatio;
@@ -484,68 +514,74 @@ class Civilization {
         return COLORS.endangered;
     }
     get radius() {
-        const base = Math.max(3, Math.min(15, 3 + Math.sqrt(this.size) * 3));
-        return base + (this.level - 1) * 2;   // 等级越高圆圈越大
+        return Math.max(3, Math.min(9, 2.5 + Math.sqrt(this.size) * 1.3)) + (this.level - 1) * 0.9;
     }
     statusText() {
+        if (!this.born) return '尚未诞生';
         if (!this.alive) return '灭绝';
         const r = this.resourceRatio;
         return r > 0.6 ? '富足' : r > 0.3 ? '稳定' : r > 0.1 ? '贫瘠' : '濒危';
     }
+    /** 周期 t 时的等级（看到的是光传过来时的样子） */
+    levelAt(t) {
+        const log = this.levelLog;
+        for (let i = log.length - 1; i >= 0; i--) if (log[i][0] <= t) return log[i][1];
+        return 1;
+    }
 }
 
 function createWorld(params, seedStr) {
-    const seed = hashSeed(seedStr);
+    const seed = hashSeed(String(seedStr));
     const rng = mulberry32(seed);
     const n = Math.max(1, Math.round(params.initialCivs));
     const W = CONFIG.WORLD_W, H = CONFIG.WORLD_H;
-    const civs = [];
-    const raw = [];
-    // 随机散布：几个疏密不一的星团 + 零散的野生文明，铺满整个世界但不均匀
-    const M = 40, MIN_D = 22;
+    const gauss = () => { let u = 0; while (u === 0) u = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng()); };
+
+    // 恒星：几个疏密不一的星团 + 稀疏的场星
     const clusters = [];
-    const nc = 2 + Math.floor(rng() * 3);               // 2–4 个星团
-    for (let k = 0; k < nc; k++) clusters.push({ x: M + rng() * (W - 2 * M), y: M + rng() * (H - 2 * M), s: 40 + rng() * 110 });
-    const gauss = () => { let u = 0, v = 0; while (u === 0) u = rng(); v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-    const pts = [];
-    for (let i = 0; i < n; i++) {
-        let x = 0, y = 0, ok = false;
-        for (let attempt = 0; !ok && attempt < 500; attempt++) {
-            if (rng() < 0.3) { x = M + rng() * (W - 2 * M); y = M + rng() * (H - 2 * M); }   // 30% 零散分布
-            else { const c = clusters[Math.floor(rng() * nc)]; x = c.x + gauss() * c.s; y = c.y + gauss() * c.s; }
-            if (x < M || x > W - M || y < M || y > H - M) continue;
-            ok = true;
-            for (const q of pts) {
-                const dx = q[0] - x, dy = q[1] - y;
-                if (dx * dx + dy * dy < MIN_D * MIN_D) { ok = false; break; }
-            }
+    const nc = 3 + Math.floor(rng() * 4);
+    for (let k = 0; k < nc; k++) clusters.push({ x: rng() * W, y: rng() * H, s: 35 + rng() * 110, w: 0.5 + rng() });
+    const wsum = clusters.reduce((a, c) => a + c.w, 0);
+    const stars = [];
+    const raw = [];
+    for (let i = 0; i < CONFIG.STAR_COUNT; i++) {
+        let x, y;
+        if (rng() < 0.3) { x = rng() * W; y = rng() * H; }
+        else {
+            let r = rng() * wsum, c = clusters[0];
+            for (const cc of clusters) { r -= cc.w; if (r <= 0) { c = cc; break; } }
+            x = c.x + gauss() * c.s; y = c.y + gauss() * c.s;
         }
-        if (!ok) { x = M + rng() * (W - 2 * M); y = M + rng() * (H - 2 * M); }
-        pts.push([x, y]);
-        const share = 0.7 + rng() * 0.6;
-        raw.push(share);
-        civs.push(new Civilization(i, x, y, 0, rng));
+        const m = 0.3 + rng() * rng() * 3;     // 少数大质量恒星
+        raw.push(m);
+        stars.push({ id: i, x: wrapX(x), y: wrapY(y), matter: 0, owner: -1, alive: true });
     }
-    // 初始资源按比例分配，使总和严格等于物质总量
-    const sum = raw.reduce((a, b) => a + b, 0);
+    const rs = raw.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < stars.length; i++) stars[i].matter = CONFIG.TOTAL_MATTER * raw[i] / rs;
+
+    // 文明：先建好档案，诞生时间与母星在诞生时才落地
+    const civs = [];
     for (let i = 0; i < n; i++) {
-        civs[i].resources = CONFIG.TOTAL_MATTER * raw[i] / sum;
-        civs[i].peakResources = civs[i].resources;
+        const c = new Civilization(i, rng);
+        c.bornAt = i < Math.max(2, Math.round(n * 0.2)) ? 0 : Math.floor(Math.pow(rng(), 0.8) * CONFIG.BIRTH_SPAN);
+        civs.push(c);
     }
+
     const world = {
-        seed: String(seedStr), rng, civs,
+        seed: String(seedStr), rng, civs, stars,
         cycles: 0,
-        env: 0,                          // 环境中的自由物质
+        env: 0,                          // 星际介质中的自由物质
+        fleets: [],
+        flashes: [],                     // 超新星等视觉效果
         initialCount: n,
-        mode: params.mode,
-        grid: new SpatialGrid(W, H, CONFIG.GRID_CELL),
-        gridDirty: true,
-        order: [],
-        buf: [],
-        events: { conflicts: 0, cooperations: 0, alliancesFormed: 0 },
+        mode: 'conserved',
+        counts: { conflicts: 0, cooperations: 0, alliancesFormed: 0, colonies: 0, supernovae: 0 },
+        events: [],
+        milestones: {},
         history: [], historyEvery: 5,
         summary: null
     };
+    for (const c of civs) if (c.bornAt === 0) Sim.birth(world, c);
     world.summary = summarize(world);
     recordHistory(world, true);
     return world;
@@ -554,191 +590,390 @@ function createWorld(params, seedStr) {
 // ============================== SIM ==============================
 const Sim = (function () {
 
-    /* —— 物质账本 ——
-     * 严格守恒：一切消耗流入环境池，一切额外收益只能从环境池取出。
-     * 原版规则：消耗直接消失，合作/击毁奖励凭空产生（与原 axioms.html 一致）。 */
-    function sink(world, amount) {
-        if (amount > 0 && world.mode === 'conserved') world.env += amount;
+    function log(world, kind, text, x, y, ids, major) {
+        world.events.push({ t: world.cycles, kind, text, x, y, ids: ids || [], major: !!major });
+        if (world.events.length > CONFIG.EVENTS_MAX) world.events.splice(0, world.events.length - CONFIG.EVENTS_MAX);
     }
-    function source(world, amount) {
-        if (amount <= 0) return 0;
-        if (world.mode !== 'conserved') return amount;
-        const got = Math.min(amount, world.env);
-        world.env -= got;
-        return got;
+    function once(world, key) { if (world.milestones[key]) return false; world.milestones[key] = true; return true; }
+    function name(c) { return '#' + c.id; }
+
+    function setLevel(world, c, lv) {
+        if (c.tech > 8.99) c.tech = 8.99;
+        lv = Math.max(1, Math.min(8, lv));
+        if (lv === c.level) return;
+        c.level = lv;
+        c.levelLog.push([world.cycles, lv]);
     }
 
-    function kill(world, civ, killer) {
+    function birth(world, c) {
+        const rng = world.rng;
+        // 选一颗还有物质的恒星作为母星（可能落在别人的疆域里）
+        let best = null;
+        for (let k = 0; k < 40; k++) {
+            const s = world.stars[Math.floor(rng() * world.stars.length)];
+            if (!s.alive || s.matter < 15) continue;
+            if (world.civs.some(o => o.alive && o.home === s.id)) continue;
+            best = s; break;
+        }
+        if (!best) { c.bornAt = world.cycles + 50; return; }   // 暂无合适恒星，稍后再试
+        c.born = true; c.alive = true;
+        c.home = best.id; c.x = best.x; c.y = best.y;
+        c.bornAt = world.cycles;
+        c.levelLog = [[world.cycles, 1]];
+        let inside = '';
+        if (best.owner >= 0 && best.owner !== c.id) {
+            const o = world.civs[best.owner];
+            o.stars.delete(best.id);
+            inside = '，就在 ' + name(o) + ' 的疆域之内';
+        }
+        best.owner = c.id;
+        c.stars.add(best.id);
+        const take = Math.min(best.matter * 0.3, 40);
+        best.matter -= take; c.resources = take; c.peakResources = take;
+        if (world.cycles > 0) log(world, 'birth', '文明 ' + name(c) + ' 诞生' + inside, c.x, c.y, [c.id], !!inside);
+    }
+
+    function kill(world, civ, killer, cause) {
         if (!civ.alive) return;
         civ.alive = false;
-        if (world.mode === 'conserved') { world.env += Math.max(0, civ.resources); }
+        world.env += Math.max(0, civ.resources);
         civ.resources = 0;
         civ.diedAt = world.cycles;
         civ.killedBy = killer ? killer.id : -1;
-        // 双向清理关系，避免死亡文明残留在联盟/敌对统计中
+        civ.cause = cause || '';
+        for (const sid of civ.stars) { const s = world.stars[sid]; if (s.owner === civ.id) s.owner = -1; }
         for (const id of civ.allies) world.civs[id].allies.delete(civ.id);
         for (const id of civ.enemies) world.civs[id].enemies.delete(civ.id);
         civ.alliesAtDeath = civ.allies.size;
         civ.enemiesAtDeath = civ.enemies.size;
-        civ.allies.clear();
-        civ.enemies.clear();
-        world.gridDirty = true;
+        civ.allies.clear(); civ.enemies.clear();
+        civ.starsAtDeath = civ.stars.size;
+        civ.stars.clear();
     }
 
-    function rebuildGrid(world) {
-        world.grid.clear();
-        for (const c of world.civs) if (c.alive) world.grid.insert(c);
-        world.gridDirty = false;
-    }
+    function breakAlliance(a, b) { a.allies.delete(b.id); b.allies.delete(a.id); }
+    function makeEnemies(a, b) { a.enemies.add(b.id); b.enemies.add(a.id); breakAlliance(a, b); }
 
-    // 公理一：生存是第一需要
-    function survivalDecision(world, civ, p) {
-        const range = contactRange(civ, p);
-        if (range <= 0) return;                    // 尚未进入星际时代
-        const r2 = range * range;
-        const cand = world.grid.query(civ.x, civ.y, range, world.buf);
-        // 先固定本轮感知到的邻居（与原版“先探测再逐个决策”一致）
-        const nearby = [];
-        for (let i = 0; i < cand.length; i++) {
-            const o = cand[i];
-            if (o === civ || !o.alive) continue;
-            const dx = civ.x - o.x, dy = civ.y - o.y;
-            if (dx * dx + dy * dy <= r2) nearby.push(o);
+    function learn(world, a, b, how) {
+        if (a === b || !b.alive || a.known.has(b.id)) return false;
+        const d = torusDist(a.x, a.y, b.x, b.y);
+        a.known.set(b.id, { since: world.cycles, seenLevel: b.levelAt(world.cycles - d / CONFIG.LIGHT_SPEED) });
+        if (once(world, 'firstcontact')) {
+            log(world, 'contact', '宇宙首次接触：' + name(a) + ' ' + how + ' ' + name(b) + '（相距 ' + Math.round(d) + '，看到的是它 ' + Math.round(d / CONFIG.LIGHT_SPEED) + ' 周期前的样子）', b.x, b.y, [a.id, b.id], true);
         }
-        for (let i = 0; i < nearby.length; i++) {
-            const other = nearby[i];
-            if (!other.alive) continue;           // 本轮中可能已被其他文明消灭
-            if (!civ.alive) return;
-            civ.known.add(other.id);
-            // 资源危机时更容易发生冲突
-            const pressure = 1 - civ.resources / Math.max(civ.peakResources, 100);
-            const threshold = p.aggression * (1 + pressure);
+        return true;
+    }
 
-            if (civ.resources < 50) {
-                // 濒危状态：必须获取资源
-                if (other.resources > civ.resources && world.rng() < 0.8) attack(world, civ, other, p);
-            } else if (civ.allies.has(other.id)) {
-                cooperate(world, civ, other, p);      // 维持联盟
-            } else if (civ.enemies.has(other.id)) {
-                if (world.rng() < threshold) attack(world, civ, other, p);
-            } else {
-                // 新接触：决定合作或竞争
-                if (world.rng() < p.cooperation * civ.cooperativeness) {
-                    proposeAlliance(world, civ, other);
-                } else if (world.rng() < threshold * civ.aggressiveness) {
-                    attack(world, civ, other, p);
-                }
+    // ---------- 1. 内部发展：采集、消耗、增长、科技 ----------
+    function develop(world, c, p) {
+        const rng = world.rng;
+        c.age++;
+        // 采集：只能从自己拥有的恒星获取物质（资源有位置）
+        // 每颗恒星每周期最多被开采其物质的 1.5%，同时受文明技术产能限制
+        const prod = (0.4 + c.size * 0.25) * c.efficiency * p.resourceEfficiency * 3;
+        const storage = 40 + c.size * 30;              // 仓储上限：囤满就不再开采
+        for (const sid of c.stars) {
+            if (c.resources >= storage) break;
+            const s = world.stars[sid];
+            const got = Math.min(s.matter * 0.015, prod);
+            s.matter -= got; c.resources += got;
+        }
+        // 消耗
+        const consumption = c.size * 0.08 * (1 + (c.level - 1) * 0.5) * (1 - c.efficiency * 0.4);   // 越先进越耗能
+        const paid = Math.min(consumption, Math.max(0, c.resources));
+        spend(world, c, paid);
+        // 增长：规模受疆域上限约束
+        const cap = 2 + c.stars.size * 1.5;
+        const growthCost = c.size * 3;
+        if (c.resources > growthCost * 3 && c.size < cap) {
+            spend(world, c, growthCost);
+            c.size = Math.min(cap, c.size * (1 + p.growthRate * 0.012 * c.growthFactor));
+        }
+        // 科技：与体量无关，速度因文明而异，偶有突破（技术爆炸）
+        const prevLv = c.level;
+        c.tech += 0.0035 * c.growthFactor * p.growthRate * (c.resources > consumption * 5 ? 1 : 0.3) / (1 + 0.6 * Math.max(0, c.level - 2));   // 越往上越难
+        if (rng() < 0.0004) {
+            const jump = 0.6 + rng() * 1.2;
+            c.tech += jump;
+            if (Math.floor(c.tech) > prevLv) log(world, 'boom', '技术爆炸：' + name(c) + ' 突然跃升至 ' + levelName(Math.floor(c.tech)), c.x, c.y, [c.id], true);
+        }
+        const lv = Math.max(1, Math.min(8, Math.floor(c.tech)));
+        if (lv > prevLv) {
+            setLevel(world, c, lv);
+            // 大过滤器：跨入工业时代和星际门槛时，有可能自我毁灭
+            if ((lv === 2 || lv === p.contactLevel) && rng() < 0.05 + 0.08 * c.aggressiveness) {
+                kill(world, c, null, lv === 2 ? '工业化中自我毁灭' : '核战争中自我毁灭');
+                log(world, 'filter', '大过滤器：' + name(c) + ' 在迈入' + levelName(lv) + '时' + (lv === 2 ? '毁于环境崩溃' : '毁于核战争'), c.x, c.y, [c.id], true);
+                return;
+            }
+            if (lv === 2 && !c.silent && c.sigStart < 0) c.sigStart = world.cycles;   // 无线电开始泄露
+            if (lv === p.contactLevel) {
+                if (c.silent && c.sigStart < 0 && rng() < 0.3) c.sigStart = world.cycles;  // 静默文明也可能忍不住广播
+                if (once(world, 'firstspace')) log(world, 'space', name(c) + ' 成为第一个进入星际时代的文明', c.x, c.y, [c.id], true);
+                else log(world, 'space', name(c) + ' 进入星际时代' + (c.silent ? '（选择保持静默）' : ''), c.x, c.y, [c.id], false);
             }
         }
+        // 内乱：资源吃紧时更容易发生
+        const stress = c.resources < consumption * 8 ? 4 : 1;
+        if (rng() < 0.0004 * stress * p.disasterRate && c.stars.size > 0) collapse(world, c);
+        if (!c.alive) return;
+        // 饥荒：入不敷出时规模萎缩，萎缩到底才灭亡
+        if (c.resources < consumption) {
+            c.size *= 0.985;
+            if (c.size < 0.8) { kill(world, c, null, '资源耗尽'); log(world, 'starve', name(c) + ' 在漫长的饥荒中消亡', c.x, c.y, [c.id], false); return; }
+        }
+        if (c.resources < 0) c.resources = 0;
+        if (c.resources > c.peakResources) c.peakResources = c.resources;
     }
 
-    function attack(world, civ, target, p) {
-        if (!target.alive) return;
-        const dx = civ.x - target.x, dy = civ.y - target.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        // 攻击成功率取决于距离、大小差异和文明等级
-        const levelAdv = civ.level / Math.max(target.level, 1);
-        const sizeAdv = civ.size / (civ.size + target.size);
-        const distFactor = Math.max(0.1, 1 - distance / (p.detectionRange * 2));
-        const successRate = Math.min(0.8, sizeAdv * distFactor * levelAdv * 0.7);
-        world.events.conflicts++;
+    /** 花掉的物质大部分在母星系内循环（废热、残骸落回行星），其余散入星际介质 */
+    function spend(world, c, amount) {
+        if (amount <= 0) return;
+        c.resources -= amount;
+        const home = world.stars[c.home];
+        if (home && home.alive && home.owner === c.id) { home.matter += amount * 0.9; world.env += amount * 0.1; }
+        else world.env += amount;
+    }
 
-        if (world.rng() < successRate) {
-            // 掠夺资源（等级越高掠夺效率越高）
-            const plunderRate = 0.2 + (civ.level - 1) * 0.1;
-            let plunder = Math.min(target.resources * plunderRate, civ.size * 50);
-            if (world.mode === 'conserved') plunder = Math.max(0, Math.min(plunder, target.resources));
-            civ.resources += plunder * 0.8;          // 掠夺有损耗
-            target.resources -= plunder;
-            sink(world, plunder * 0.2);              // 损耗回归环境
-            civ.conflicts++;
-            target.conflicts++;
-            // 建立敌对关系（同时破裂联盟）
-            civ.enemies.add(target.id); target.enemies.add(civ.id);
-            civ.allies.delete(target.id); target.allies.delete(civ.id);
-            if (target.resources <= 0) {
-                kill(world, target, civ);
-                civ.resources += source(world, target.size * 20);   // 获取残骸资源
-            }
+    function collapse(world, c) {
+        const rng = world.rng;
+        // 失去一半外围星系，规模与科技倒退
+        const lost = [];
+        for (const sid of c.stars) if (sid !== c.home && rng() < 0.5) lost.push(sid);
+        for (const sid of lost) { c.stars.delete(sid); world.stars[sid].owner = -1; }
+        c.size = Math.max(1, c.size * 0.5);
+        c.tech = Math.max(1, c.tech - 0.8);
+        setLevel(world, c, Math.max(1, Math.floor(c.tech)));
+        if (rng() < 0.15) {
+            kill(world, c, null, '内乱崩溃');
+            log(world, 'collapse', name(c) + ' 在内战中彻底崩溃', c.x, c.y, [c.id], true);
         } else {
-            // 攻击失败，损失资源
-            const loss = Math.min(Math.max(0, civ.resources), civ.size * 10);
-            civ.resources -= loss;
-            sink(world, loss);
+            log(world, 'collapse', name(c) + ' 爆发内乱' + (lost.length ? '，失去 ' + lost.length + ' 个星系' : '') + '，倒退至' + levelName(c.level), c.x, c.y, [c.id], c.level >= 3);
         }
     }
 
-    function cooperate(world, civ, partner, p) {
-        if (!partner.alive || !civ.allies.has(partner.id)) return;
-        // 资源共享带来效率提升，与文明等级相关
-        const avgLevel = (civ.level + partner.level) / 2;
-        const sharedEff = (civ.efficiency + partner.efficiency) / 2;
-        const bonus = sharedEff * p.cooperation * 10 * avgLevel;
-        civ.resources += source(world, bonus);
-        partner.resources += source(world, bonus);
-        civ.cooperations++;
-        partner.cooperations++;
-        world.events.cooperations++;
-    }
-
-    function proposeAlliance(world, civ, other) {
-        if (!other.alive) return;
-        // 基于相互利益决定是否结盟
-        const mutual = (civ.cooperativeness + other.cooperativeness) / 2;
-        if (world.rng() < mutual) {
-            civ.allies.add(other.id); other.allies.add(civ.id);
-            civ.enemies.delete(other.id); other.enemies.delete(civ.id);   // 解除敌对关系
-            world.events.alliancesFormed++;
+    // ---------- 2. 探测：受光速与静默策略限制 ----------
+    function detect(world, a, p) {
+        const range = contactRange(a, p);
+        if (range <= 0) return;
+        const t = world.cycles;
+        for (const b of world.civs) {
+            if (b === a || !b.alive || a.known.has(b.id)) continue;
+            const d = torusDist(a.x, a.y, b.x, b.y);
+            if (d > range) continue;
+            // 光必须已经从 b 传到 a：要么 b 的广播波前已抵达，要么在近距离被动发现（同样要求 b 已存在 d/c 周期）
+            const lightOk = t - b.bornAt >= d / CONFIG.LIGHT_SPEED;
+            const heard = b.loud && (t - b.sigStart) * CONFIG.LIGHT_SPEED >= d;
+            const passive = lightOk && d <= range * (b.silent ? 0.25 : 0.45) && b.level >= 2;
+            if (heard || passive) learn(world, a, b, heard ? '收到了来自' : '观测到了');
         }
     }
 
-    // 公理二：增长但物质有限
-    function grow(world, civ, p) {
-        if (!civ.alive) return;
-        civ.age++;
-        // 资源消耗（效率随等级提升）
-        const consumption = civ.size * (2 - civ.efficiency * p.resourceEfficiency);
-        const paid = world.mode === 'conserved' ? Math.min(consumption, Math.max(0, civ.resources)) : consumption;
-        civ.resources -= paid;
-        sink(world, paid);
-        // 增长尝试（需要资源）
-        const growthCost = civ.size * 10;
-        if (civ.resources > growthCost * 2) {
-            civ.resources -= growthCost;
-            sink(world, growthCost);
-            civ.size = Math.min(CONFIG.MAX_SIZE, civ.size * (1 + p.growthRate * 0.01 * civ.growthFactor));
-            const lv = Math.floor(civ.size);
-            if (lv > civ.level) civ.level = lv;
+    // ---------- 3. 决策：对已知文明（依据光速延迟后看到的信息） ----------
+    function decide(world, a, p) {
+        const rng = world.rng;
+        const gate = p.contactLevel;
+        if (a.level < gate) return;
+        const range = contactRange(a, p);
+        for (const [id, info] of a.known) {
+            const b = world.civs[id];
+            if (!b.alive) { a.known.delete(id); continue; }
+            if (a.pending.has(id)) continue;
+            const d = torusDist(a.x, a.y, b.x, b.y);
+            if (d > range * 1.3) continue;
+            info.seenLevel = b.levelAt(world.cycles - d / CONFIG.LIGHT_SPEED);   // 能看到的永远是过去
+            if (a.allies.has(id)) {
+                if (rng() < 0.1) cooperate(world, a, b, p);
+                continue;
+            }
+            const threat = info.seenLevel >= a.level - 1;            // 不确定对方是否会先动手
+            const weak = info.seenLevel <= a.level - 2;
+            const desperate = a.resources < a.size * 3;
+            let pAttack = p.aggression * a.aggressiveness * 0.04;
+            if (threat) pAttack += p.suspicion * a.aggressiveness * 0.03;   // 猜疑链：先下手为强
+            if (weak) pAttack += p.aggression * 0.03;
+            if (desperate) pAttack += 0.05;
+            if (a.enemies.has(id)) pAttack += 0.05;
+            if (rng() < pAttack && a.resources > 15) { launch(world, a, b, 'attack', p); continue; }
+            if (!a.enemies.has(id) && rng() < p.cooperation * a.cooperativeness * 0.03 * (1 - p.suspicion * 0.5)) {
+                launch(world, a, b, 'msg', p);
+            }
         }
-        // 资源耗尽导致灭绝
-        if (civ.resources <= 0) {
-            // 原版：释放 30% 消耗量到环境
-            if (world.mode !== 'conserved') world.env += Math.max(0, consumption * 0.3);
-            kill(world, civ, null);
+    }
+
+    function cooperate(world, a, b, p) {
+        if (!b.alive || !a.allies.has(b.id)) return;
+        // 技术交流：落后一方科技向前追赶；共享一小部分星际介质中的回收物质
+        if (b.tech > a.tech) a.tech += (b.tech - a.tech) * 0.02;
+        else b.tech += (a.tech - b.tech) * 0.02;
+        const bonus = Math.min(world.env * 0.01, (a.efficiency + b.efficiency) * p.cooperation * 3);
+        world.env -= bonus;
+        a.resources += bonus / 2; b.resources += bonus / 2;
+        a.cooperations++; b.cooperations++;
+        world.counts.cooperations++;
+    }
+
+    // ---------- 4. 舰队 / 信使 / 殖民船：有限速度飞行 ----------
+    function launch(world, a, target, type, p) {
+        let tx, ty, cargo = 0, speed;
+        if (type === 'colony') {
+            tx = target.x; ty = target.y;
+            cargo = Math.min(a.resources * 0.4, 15);
+            speed = fleetSpeed(a.level);
+            a.colonyShips++;
+        } else {
+            tx = target.x; ty = target.y;
+            if (type === 'attack') { cargo = Math.min(a.resources * 0.4, 30 + a.size * 15); speed = fleetSpeed(a.level); }
+            else speed = CONFIG.LIGHT_SPEED;                  // 信息以光速传播
+            a.pending.add(target.id);
+        }
+        a.resources -= cargo;
+        const dx = torusDX(a.x, tx), dy = torusDY(a.y, ty);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        world.fleets.push({ type, from: a.id, to: type === 'colony' ? -1 : target.id, star: type === 'colony' ? target.id : -1,
+            x0: a.x, y0: a.y, dx, dy, dist, travelled: 0, speed, cargo, level: a.level, launched: world.cycles });
+        if (type === 'attack') {
+            world.counts.conflicts++;
+            if (once(world, 'firststrike')) log(world, 'war', '第一支星际舰队出发：' + name(a) + ' → ' + name(target) + '，预计 ' + Math.round(dist / speed) + ' 周期后抵达', a.x, a.y, [a.id, target.id], true);
+        }
+    }
+
+    function moveFleets(world, p) {
+        const fl = world.fleets;
+        let w = 0;
+        for (let i = 0; i < fl.length; i++) {
+            const f = fl[i];
+            f.travelled += f.speed;
+            if (f.travelled >= f.dist) arrive(world, f, p);
+            else fl[w++] = f;
+        }
+        fl.length = w;
+    }
+
+    function arrive(world, f, p) {
+        const a = world.civs[f.from];
+        if (f.type === 'colony') {
+            a.colonyShips = Math.max(0, a.colonyShips - 1);
+            const s = world.stars[f.star];
+            if (!a.alive || !s.alive) { world.env += f.cargo; return; }
+            if (s.owner === -1) {
+                s.owner = a.id; a.stars.add(s.id); a.resources += f.cargo;
+                world.counts.colonies++;
+                const n = a.stars.size;
+                if (n === 10 || n === 25 || n === 50) log(world, 'empire', name(a) + ' 的疆域扩张到 ' + n + ' 个星系', s.x, s.y, [a.id], n >= 25);
+            } else {
+                // 别人先到了：殖民船被迫返航（物质散失到星际介质），并且双方互相知晓
+                world.env += f.cargo;
+                const o = world.civs[s.owner];
+                if (o && o.alive && o !== a) { learn(world, a, o, '在边境撞见了'); learn(world, o, a, '在边境撞见了'); }
+            }
             return;
         }
-        if (civ.resources > civ.peakResources) civ.peakResources = civ.resources;
+        a.pending.delete(f.to);
+        const b = world.civs[f.to];
+        if (!b.alive || !a.alive) { if (f.type === 'attack') { if (a.alive) a.resources += f.cargo; else world.env += f.cargo; } return; }
+        if (f.type === 'msg') {
+            learn(world, b, a, '收到了来自');                       // 发出信息 = 暴露自己
+            const mutual = (a.cooperativeness + b.cooperativeness) / 2;
+            if (!b.enemies.has(a.id) && world.rng() < mutual * (0.5 + p.cooperation * 0.5) * (1 - p.suspicion * b.aggressiveness * 0.6)) {
+                a.allies.add(b.id); b.allies.add(a.id);
+                world.counts.alliancesFormed++;
+                if (once(world, 'firstalliance')) log(world, 'alliance', '宇宙中第一个星际联盟：' + name(a) + ' 与 ' + name(b), b.x, b.y, [a.id, b.id], true);
+            } else if (b.level >= p.contactLevel && world.rng() < p.suspicion * b.aggressiveness) {
+                // 黑暗森林：回应善意的是一支舰队
+                if (!b.pending.has(a.id) && b.resources > 15) {
+                    launch(world, b, a, 'attack', p);
+                    log(world, 'darkforest', '黑暗森林：' + name(a) + ' 的问候暴露了位置，' + name(b) + ' 派出了舰队', b.x, b.y, [a.id, b.id], true);
+                }
+            }
+            return;
+        }
+        // 攻击结算：用抵达时目标的真实状态
+        learn(world, b, a, '遭到了');
+        const levelAdv = Math.pow(1.6, f.level - b.level);
+        const defense = 10 + b.size * 8 + b.resources * 0.2;
+        const success = world.rng() < (f.cargo * levelAdv) / (f.cargo * levelAdv + defense);
+        a.conflicts++; b.conflicts++;
+        makeEnemies(a, b);
+        if (success) {
+            const plunder = Math.min(b.resources * 0.5, f.cargo * 2);
+            b.resources -= plunder;
+            a.resources += plunder * 0.8 + f.cargo * 0.7;       // 返航（简化为即时）
+            world.env += plunder * 0.2 + f.cargo * 0.3;
+            // 夺取一个星系：优先外围，最后才是母星
+            let take = -1;
+            for (const sid of b.stars) if (sid !== b.home) { take = sid; break; }
+            if (take >= 0) {
+                b.stars.delete(take); a.stars.add(take); world.stars[take].owner = a.id;
+            } else {
+                kill(world, b, a, '被 #' + a.id + ' 毁灭');
+                const prey = levelName(b.level);
+                log(world, 'destroy', name(a) + ' 的舰队毁灭了' + prey + '的 ' + name(b), b.x, b.y, [a.id, b.id], true);
+            }
+        } else {
+            world.env += f.cargo;                                 // 舰队覆灭
+        }
     }
 
-    function redistribute(world) {
-        if (world.env <= 0) return;
-        let alive = 0, wsum = 0;
-        for (const c of world.civs) if (c.alive) { alive++; wsum += c.size * c.efficiency; }
-        if (alive === 0) return;
-        const share = world.env * 0.1;    // 每周期释放 10% 的环境物质
-        if (world.mode === 'conserved') {
-            // 守恒：按 规模×效率 加权回收（更大、更高效的文明收集更多）
-            for (const c of world.civs) if (c.alive) c.resources += share * (c.size * c.efficiency) / wsum;
-        } else {
-            for (const c of world.civs) if (c.alive) c.resources += share / alive;
+    // ---------- 5. 殖民 ----------
+    function colonize(world, c, p) {
+        if (c.level < p.contactLevel || c.colonyShips >= 1 + (c.level - p.contactLevel) || c.resources < 12) return;
+        if (world.rng() > 0.08) return;
+        const range = contactRange(c, p) * 0.7;
+        let best = null, bd = Infinity;
+        for (const s of world.stars) {
+            if (!s.alive || s.owner !== -1 || s.matter < 20) continue;
+            let d = Infinity;
+            // 从最近的自有星系出发计算距离
+            d = torusDist(c.x, c.y, s.x, s.y);
+            if (d > range) continue;
+            const score = d / Math.sqrt(s.matter);
+            if (score < bd) { bd = score; best = s; }
         }
+        if (best) launch(world, c, best, 'colony', p);
+    }
+
+    // ---------- 6. 天灾：超新星 ----------
+    function disasters(world, p) {
+        const rng = world.rng;
+        if (rng() >= 0.0012 * p.disasterRate) return;
+        const s = world.stars[Math.floor(rng() * world.stars.length)];
+        if (!s.alive) return;
+        const R = 30 + rng() * 50;
+        s.alive = false;
+        world.env += s.matter; s.matter = 0;
+        if (s.owner >= 0) { const o = world.civs[s.owner]; o.stars.delete(s.id); s.owner = -1; }
+        world.counts.supernovae++;
+        world.flashes.push({ x: s.x, y: s.y, r: R, t: world.cycles });
+        const victims = [];
+        for (const c of world.civs) {
+            if (!c.alive) continue;
+            if (torusDist(c.x, c.y, s.x, s.y) <= R) { victims.push(c); }
+            for (const sid of [...c.stars]) {
+                const st = world.stars[sid];
+                if (torusDist(st.x, st.y, s.x, s.y) <= R && sid !== c.home) { c.stars.delete(sid); st.owner = -1; }
+            }
+        }
+        for (const v of victims) kill(world, v, null, '超新星');
+        log(world, 'supernova', '超新星爆发' + (victims.length ? '，吞没了 ' + victims.map(name).join('、') : ''), s.x, s.y, victims.map(v => v.id), victims.length > 0);
+    }
+
+    // ---------- 7. 星际介质重新凝聚成恒星（物质循环） ----------
+    function recycle(world) {
+        if (world.env <= 0) return;
+        const share = world.env * 0.02;
         world.env -= share;
+        const rng = world.rng;
+        for (let k = 0; k < 3; k++) {
+            let s = world.stars[Math.floor(rng() * world.stars.length)];
+            if (!s.alive && rng() < 0.3) s.alive = true;          // 恒星残骸偶尔重新点燃
+            if (!s.alive) s = world.stars.find(x => x.alive) || s;
+            s.matter += share / 3;
+        }
     }
 
     function shuffleOrder(world) {
-        // 每周期随机决策顺序，消除原版“下标靠前者先手”的系统性偏差
-        const o = world.order;
-        o.length = 0;
+        const o = [];
         for (const c of world.civs) if (c.alive) o.push(c);
         for (let i = o.length - 1; i > 0; i--) {
             const j = Math.floor(world.rng() * (i + 1));
@@ -749,42 +984,64 @@ const Sim = (function () {
 
     function step(world, p) {
         world.cycles++;
-        if (world.gridDirty) rebuildGrid(world);
-        // 阶段1：生存决策（公理一）
+        for (const c of world.civs) if (!c.born && c.bornAt <= world.cycles) birth(world, c);
         const order = shuffleOrder(world);
-        for (let i = 0; i < order.length; i++) {
-            if (order[i].alive) survivalDecision(world, order[i], p);
+        for (const c of order) if (c.alive) develop(world, c, p);
+        for (const c of order) {
+            if (!c.alive) continue;
+            if ((world.cycles + c.id) % 4 === 0) detect(world, c, p);
+            if ((world.cycles + c.id) % 6 === 0) decide(world, c, p);
+            colonize(world, c, p);
         }
-        // 阶段2：增长与资源消耗（公理二）
-        for (const c of world.civs) grow(world, c, p);
-        // 阶段3：环境物质再分配
-        redistribute(world);
+        moveFleets(world, p);
+        disasters(world, p);
+        recycle(world);
+        if (world.flashes.length && world.cycles - world.flashes[0].t > 80) world.flashes.shift();
+        hegemon(world);
         world.summary = summarize(world);
         recordHistory(world, false);
     }
 
-    return { step, kill, sink, source };
+    function hegemon(world) {
+        if (world.cycles % 50) return;
+        let total = 0, best = null;
+        for (const c of world.civs) if (c.alive) { total += c.stars.size; if (!best || c.stars.size > best.stars.size) best = c; }
+        if (best && best.stars.size >= 12 && best.stars.size > total * 0.5 && once(world, 'hegemon' + best.id)) {
+            log(world, 'hegemon', name(best) + ' 控制了文明世界过半的星系，成为霸主', best.x, best.y, [best.id], true);
+        }
+    }
+
+    return { step, kill, birth, log };
 })();
 
 function summarize(world) {
-    let alive = 0, dead = 0, allyEdges = 0, enemyEdges = 0, civMatter = 0;
+    let alive = 0, dead = 0, unborn = 0, allyEdges = 0, enemyEdges = 0, civMatter = 0, spacefaring = 0, owned = 0;
     for (const c of world.civs) {
+        if (!c.born) { unborn++; continue; }
         if (c.alive) {
             alive++;
             allyEdges += c.allies.size;
             enemyEdges += c.enemies.size;
             civMatter += c.resources;
+            owned += c.stars.size;
+            if (c.level >= 3) spacefaring++;
         } else dead++;
     }
+    let starMatter = 0, fleetMatter = 0;
+    for (const s of world.stars) starMatter += s.matter;
+    for (const f of world.fleets) fleetMatter += f.cargo;
+    const total = civMatter + fleetMatter + starMatter + world.env;
     return {
-        alive, dead,
+        alive, dead, unborn, spacefaring, owned,
         alliances: Math.floor(allyEdges / 2),
         conflicts: Math.floor(enemyEdges / 2),
-        civMatter,
+        fleets: world.fleets.length,
+        civMatter: civMatter + fleetMatter,
+        starMatter,
         env: world.env,
-        totalMatter: civMatter + world.env,
-        civRatio: civMatter / CONFIG.TOTAL_MATTER,
-        crisis: alive > 0 && civMatter / CONFIG.TOTAL_MATTER < CONFIG.CRISIS_RATIO
+        totalMatter: total,
+        civRatio: (civMatter + fleetMatter) / CONFIG.TOTAL_MATTER,
+        crisis: alive > 0 && starMatter / CONFIG.TOTAL_MATTER < CONFIG.CRISIS_RATIO
     };
 }
 
@@ -793,7 +1050,6 @@ function recordHistory(world, force) {
     const s = world.summary;
     world.history.push({ t: world.cycles, alive: s.alive, ratio: s.civRatio, conflicts: s.conflicts });
     if (world.history.length > CONFIG.HISTORY_MAX) {
-        // 抽稀：保留偶数点，采样间隔翻倍
         world.history = world.history.filter((_, i) => i % 2 === 0);
         world.historyEvery *= 2;
     }
@@ -848,12 +1104,18 @@ const Render = (function () {
         const s = scale();
         let best = null, bestD = Infinity;
         for (const c of world.civs) {
-            const dx = c.x - w.x, dy = c.y - w.y;
-            const d = Math.sqrt(dx * dx + dy * dy);
-            const hit = Math.max(c.radius + 4 / s, 16 / s);  // 触屏友好的最小命中半径
+            if (!c.born) continue;
+            const d = torusDist(c.x, c.y, wrapX(w.x), wrapY(w.y));
+            const hit = Math.max(c.radius + 4 / s, 16 / s);
             if (d <= hit && d < bestD) { best = c; bestD = d; }
         }
         return best;
+    }
+
+    function centerOn(x, y) {
+        const s = scale();
+        view.panX = -(x - CONFIG.WORLD_W / 2) * s;
+        view.panY = -(y - CONFIG.WORLD_H / 2) * s;
     }
 
     function draw(world, params, selectedId) {
@@ -863,25 +1125,53 @@ const Render = (function () {
         ctx.setTransform(dpr * s, 0, 0, dpr * s,
             dpr * (cssW / 2 + view.panX - CONFIG.WORLD_W / 2 * s),
             dpr * (cssH / 2 + view.panY - CONFIG.WORLD_H / 2 * s));
-        const px = 1 / s;   // 1 屏幕像素对应的世界单位
+        const px = 1 / s;
+        const W = CONFIG.WORLD_W, H = CONFIG.WORLD_H, TAU = Math.PI * 2;
+        const civs = world.civs, t = world.cycles;
 
-        // 星空
+        // 背景星空（装饰）
         ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        for (const st of stars) {
-            ctx.globalAlpha = st.a;
-            ctx.fillRect(st.x, st.y, st.s * px, st.s * px);
-        }
+        for (const st of stars) { ctx.globalAlpha = st.a * 0.6; ctx.fillRect(st.x, st.y, st.s * px, st.s * px); }
         ctx.globalAlpha = 1;
 
-        // 宇宙边界
-        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        // 宇宙边界（环面：虚线表示首尾相接）
+        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
         ctx.lineWidth = px;
-        ctx.strokeRect(0, 0, CONFIG.WORLD_W, CONFIG.WORLD_H);
+        ctx.setLineDash([6 * px, 6 * px]);
+        ctx.strokeRect(0, 0, W, H);
+        ctx.setLineDash([]);
 
-        const civs = world.civs;
+        // 疆域（每个文明拥有的星系周围的晕）
+        for (const c of civs) {
+            if (!c.alive || c.stars.size === 0) continue;
+            ctx.beginPath();
+            for (const sid of c.stars) { const st = world.stars[sid]; ctx.moveTo(st.x + 16, st.y); ctx.arc(st.x, st.y, 16, 0, TAU); }
+            ctx.fillStyle = 'hsla(' + c.hue.toFixed(0) + ',70%,55%,0.07)';
+            ctx.fill();
+        }
 
-        // 探测范围（按颜色批量描边）
+        // 光速波前：广播文明发出的信号以光速向外扩散
         ctx.lineWidth = px;
+        ctx.beginPath();
+        for (const c of civs) {
+            if (!c.loud) continue;
+            const r = (t - c.sigStart) * CONFIG.LIGHT_SPEED;
+            if (r <= 0 || r > 560) continue;
+            ctx.moveTo(c.x + r, c.y); ctx.arc(c.x, c.y, r, 0, TAU);
+        }
+        ctx.strokeStyle = 'rgba(180,200,255,0.07)';
+        ctx.stroke();
+
+        // 恒星：无主为淡黄，有主染上文明色；大小表示剩余物质
+        for (const st of world.stars) {
+            const r = st.alive ? 0.6 + Math.sqrt(st.matter) / 9 : 0.5;
+            if (!st.alive) ctx.fillStyle = 'rgba(120,120,120,0.35)';
+            else if (st.owner >= 0) ctx.fillStyle = 'hsla(' + civs[st.owner].hue.toFixed(0) + ',75%,65%,0.9)';
+            else ctx.fillStyle = 'rgba(255,245,210,0.55)';
+            ctx.fillRect(st.x - r, st.y - r, 2 * r, 2 * r);
+        }
+
+        // 主动探测范围
         for (const col in RING_COLORS) {
             ctx.beginPath();
             let any = false;
@@ -889,84 +1179,98 @@ const Render = (function () {
                 if (!c.alive || c.color !== col) continue;
                 const r = contactRange(c, params);
                 if (r <= 0) continue;
-                ctx.moveTo(c.x + r, c.y);
-                ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+                ctx.moveTo(c.x + r, c.y); ctx.arc(c.x, c.y, r, 0, TAU);
                 any = true;
             }
             if (any) { ctx.strokeStyle = RING_COLORS[col]; ctx.stroke(); }
         }
 
-        // 合作关系（每对只画一次，单一路径）
-        ctx.beginPath();
-        for (const c of civs) {
-            if (!c.alive) continue;
-            for (const id of c.allies) {
-                if (id < c.id) continue;
-                const o = civs[id];
-                ctx.moveTo(c.x, c.y); ctx.lineTo(o.x, o.y);
+        // 关系线（沿环面最短路径）
+        const rel = (set, style, width, dash) => {
+            ctx.beginPath();
+            for (const c of civs) {
+                if (!c.alive) continue;
+                for (const id of c[set]) {
+                    if (id < c.id) continue;
+                    const o = civs[id];
+                    ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + torusDX(c.x, o.x), c.y + torusDY(c.y, o.y));
+                }
             }
-        }
-        ctx.strokeStyle = 'rgba(46, 204, 113, 0.3)';
-        ctx.lineWidth = 2 * px;
-        ctx.stroke();
+            ctx.strokeStyle = style; ctx.lineWidth = width * px;
+            if (dash) ctx.setLineDash([5 * px, 5 * px]);
+            ctx.stroke(); ctx.setLineDash([]);
+        };
+        rel('allies', 'rgba(46, 204, 113, 0.3)', 2, false);
+        rel('enemies', 'rgba(231, 76, 60, 0.3)', 1, true);
 
-        // 敌对关系
-        ctx.beginPath();
-        for (const c of civs) {
-            if (!c.alive) continue;
-            for (const id of c.enemies) {
-                if (id < c.id) continue;
-                const o = civs[id];
-                ctx.moveTo(c.x, c.y); ctx.lineTo(o.x, o.y);
-            }
-        }
-        ctx.strokeStyle = 'rgba(231, 76, 60, 0.3)';
-        ctx.lineWidth = px;
-        ctx.setLineDash([5 * px, 5 * px]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // 选中文明的关系高亮
         const sel = selectedId >= 0 ? civs[selectedId] : null;
         if (sel && sel.alive) {
             ctx.beginPath();
-            for (const id of sel.allies) { ctx.moveTo(sel.x, sel.y); ctx.lineTo(civs[id].x, civs[id].y); }
+            for (const id of sel.allies) { const o = civs[id]; ctx.moveTo(sel.x, sel.y); ctx.lineTo(sel.x + torusDX(sel.x, o.x), sel.y + torusDY(sel.y, o.y)); }
             ctx.strokeStyle = 'rgba(46, 204, 113, 0.85)'; ctx.lineWidth = 2.5 * px; ctx.stroke();
             ctx.beginPath();
-            for (const id of sel.enemies) { ctx.moveTo(sel.x, sel.y); ctx.lineTo(civs[id].x, civs[id].y); }
+            for (const id of sel.enemies) { const o = civs[id]; ctx.moveTo(sel.x, sel.y); ctx.lineTo(sel.x + torusDX(sel.x, o.x), sel.y + torusDY(sel.y, o.y)); }
             ctx.strokeStyle = 'rgba(231, 76, 60, 0.9)'; ctx.lineWidth = 1.5 * px;
             ctx.setLineDash([5 * px, 4 * px]); ctx.stroke(); ctx.setLineDash([]);
         }
 
-        // 文明本体（死亡的先画，按颜色批量填充）
+        // 飞行中的舰队 / 殖民船 / 信使
+        for (const f of world.fleets) {
+            const k = Math.min(1, f.travelled / f.dist);
+            const x = wrapX(f.x0 + f.dx * k), y = wrapY(f.y0 + f.dy * k);
+            const ux = f.dx / f.dist, uy = f.dy / f.dist;
+            const col = f.type === 'attack' ? 'rgba(255,90,80,0.95)' : f.type === 'colony' ? 'rgba(90,220,255,0.9)' : 'rgba(255,255,255,0.85)';
+            const tail = f.type === 'msg' ? 10 : 6;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - ux * tail, y - uy * tail);
+            ctx.strokeStyle = col; ctx.lineWidth = (f.type === 'attack' ? 1.6 : 1) * px; ctx.stroke();
+            const r = f.type === 'attack' ? 1.6 : 1.1;
+            ctx.fillStyle = col; ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
+        }
+
+        // 超新星闪光
+        for (const fl of world.flashes) {
+            const age = t - fl.t, k = Math.min(1, age / 80);
+            ctx.beginPath(); ctx.arc(fl.x, fl.y, fl.r * (0.3 + 0.7 * Math.min(1, age / 15)), 0, TAU);
+            ctx.fillStyle = 'rgba(255,230,160,' + (0.25 * (1 - k)).toFixed(3) + ')'; ctx.fill();
+            ctx.strokeStyle = 'rgba(255,240,200,' + (0.6 * (1 - k)).toFixed(3) + ')'; ctx.lineWidth = px; ctx.stroke();
+        }
+
+        // 文明本体
         const order = [COLORS.dead, COLORS.endangered, COLORS.poor, COLORS.stable, COLORS.rich];
         for (const col of order) {
             ctx.beginPath();
             let any = false;
             for (const c of civs) {
-                if (c.color !== col) continue;
-                const r = c.radius;
-                ctx.moveTo(c.x + r, c.y);
-                ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+                if (!c.born || c.color !== col) continue;
+                const r = c.alive ? c.radius : 2.2;
+                ctx.moveTo(c.x + r, c.y); ctx.arc(c.x, c.y, r, 0, TAU);
                 any = true;
             }
-            if (any) { ctx.fillStyle = col; ctx.fill(); }
+            if (any) { ctx.fillStyle = col; ctx.globalAlpha = col === COLORS.dead ? 0.6 : 1; ctx.fill(); ctx.globalAlpha = 1; }
         }
+        // 尚未进入星际时代的文明：空心外圈，表示还困在母星
+        ctx.beginPath();
+        for (const c of civs) {
+            if (!c.alive || c.level >= params.contactLevel) continue;
+            const r = c.radius + 2.5;
+            ctx.moveTo(c.x + r, c.y); ctx.arc(c.x, c.y, r, 0, TAU);
+        }
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = px; ctx.stroke();
 
         if (sel) {
             ctx.beginPath();
-            ctx.arc(sel.x, sel.y, sel.radius + 5 * px, 0, Math.PI * 2);
+            ctx.arc(sel.x, sel.y, (sel.alive ? sel.radius : 2.2) + 5 * px, 0, TAU);
             ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 * px; ctx.stroke();
-            if (sel.alive && contactRange(sel, params) > 0) {
-                ctx.beginPath();
-                ctx.arc(sel.x, sel.y, contactRange(sel, params), 0, Math.PI * 2);
+            const r = contactRange(sel, params);
+            if (sel.alive && r > 0) {
+                ctx.beginPath(); ctx.arc(sel.x, sel.y, r, 0, TAU);
                 ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = px;
                 ctx.setLineDash([3 * px, 6 * px]); ctx.stroke(); ctx.setLineDash([]);
             }
         }
     }
 
-    return { init, resize, draw, pick, pan, zoomAt, resetView, view };
+    return { init, resize, draw, pick, pan, zoomAt, resetView, centerOn, view };
 })();
 
 // ============================== 历史曲线 ==============================
@@ -1051,7 +1355,8 @@ const UI = (function () {
 
     function init() {
         for (const id of ['alive-civs', 'extinct-civs', 'alliances', 'conflicts', 'cycles', 'civ-matter', 'total-matter',
-            'crisis-indicator', 'inspector', 'start-btn', 'qb-play', 'seed-input', 'rule-mode', 'rule-note', 'hint-toast'])
+            'spacefaring', 'unborn', 'fleets', 'chronicle', 'chron-title', 'chron-sub', 'chron-list',
+            'crisis-indicator', 'inspector', 'start-btn', 'qb-play', 'seed-input', 'hint-toast'])
             els[id] = $(id);
     }
 
@@ -1062,18 +1367,21 @@ const UI = (function () {
         setText(els['alliances'], 'all', String(s.alliances));
         setText(els['conflicts'], 'con', String(s.conflicts));
         setText(els['cycles'], 'cyc', String(world.cycles));
+        setText(els['spacefaring'], 'sf', String(s.spacefaring));
+        setText(els['unborn'], 'ub', String(s.unborn));
+        setText(els['fleets'], 'fl', String(s.fleets));
         setText(els['civ-matter'], 'cm', s.civRatio > 10 ? s.civRatio.toFixed(0) + '×' : (s.civRatio * 100).toFixed(1) + '%');
-        setText(els['total-matter'], 'tm', compact(s.totalMatter) + (world.mode === 'conserved' ? '' : ' ⚠'));
+        setText(els['total-matter'], 'tm', compact(s.totalMatter));
 
         let crisis = '';
-        if (s.alive === 0) crisis = 'extinct';
+        if (s.alive === 0 && s.unborn === 0) crisis = 'extinct';
         else if (s.crisis) crisis = 'crisis';
         if (last.crisis !== crisis) {
             last.crisis = crisis;
             const el = els['crisis-indicator'];
             el.classList.toggle('active', crisis !== '');
             el.classList.toggle('extinct', crisis === 'extinct');
-            el.textContent = crisis === 'extinct' ? '所有文明均已灭绝 · 第 ' + world.cycles + ' 周期' : '资源危机！文明开始争夺稀缺资源';
+            el.textContent = crisis === 'extinct' ? '所有文明均已灭绝 · 第 ' + world.cycles + ' 周期' : '资源枯竭！恒星中的可用物质所剩无几';
         }
         setPlaying(running);
     }
@@ -1099,18 +1407,21 @@ const UI = (function () {
         }
         const c = world.civs[selectedId];
         let aliveKnown = 0;
-        for (const id of c.known) if (world.civs[id].alive) aliveKnown++;
+        for (const id of c.known.keys()) if (world.civs[id].alive) aliveKnown++;
         const ratio = Math.max(0, Math.min(1, c.resourceRatio));
+        const range = params ? contactRange(c, params) : 0;
+        const cause = c.cause ? '（' + c.cause + '）' : '';
         const rows = [
-            ['状态', c.statusText() + (c.alive ? '' : (c.killedBy >= 0 ? '（被 #' + c.killedBy + ' 消灭）' : '（资源耗尽）'))],
+            ['状态', c.statusText() + (c.born && !c.alive ? cause : '')],
             ['资源', fmt(c.resources, 1) + ' / 峰值 ' + fmt(c.peakResources, 0)],
-            ['规模 · 等级', fmt(c.size, 2) + ' · Lv' + c.level],
-            ['星际航行', !c.alive ? '—' : (params && contactRange(c, params) > 0
-                ? '已解锁 · 航程 ' + fmt(contactRange(c, params), 0)
-                : '未解锁（需 Lv' + (params ? params.contactLevel : '?') + '）')],
+            ['科技', 'Lv' + c.level + ' ' + levelName(c.level) + ' · ' + fmt(c.tech, 2)],
+            ['规模 · 疆域', fmt(c.size, 2) + ' · ' + (c.alive ? c.stars.size : (c.starsAtDeath || 0)) + ' 星系'],
+            ['星际航行', !c.alive ? '—' : (range > 0 ? '已解锁 · 航程 ' + fmt(range, 0) : '未解锁（需 Lv' + (params ? params.contactLevel : '?') + '）')],
+            ['策略', c.silent ? (c.loud ? '静默（已暴露）' : '静默隐藏') : (c.loud ? '广播中' : '尚无信号')],
             ['效率 · 发展速度', fmt(c.efficiency, 2) + ' · ×' + fmt(c.growthFactor, 2)],
             ['攻击性 · 合作性', fmt(c.aggressiveness, 2) + ' · ' + fmt(c.cooperativeness, 2)],
-            ['年龄', c.alive ? c.age + ' 周期' : c.age + '（灭绝于第 ' + c.diedAt + ' 周期）'],
+            ['诞生', c.born ? '第 ' + c.bornAt + ' 周期' : '第 ' + c.bornAt + ' 周期（未到）'],
+            ['年龄', !c.born ? '—' : c.alive ? c.age + ' 周期' : c.age + '（灭绝于第 ' + c.diedAt + ' 周期）'],
             ['盟友 · 敌人', c.alive ? c.allies.size + ' · ' + c.enemies.size : '—'],
             ['已知存活文明', String(aliveKnown)],
             ['冲突 · 合作次数', c.conflicts + ' · ' + c.cooperations]
@@ -1126,13 +1437,37 @@ const UI = (function () {
         }
     }
 
-    function setRuleNote(mode) {
-        els['rule-note'].textContent = mode === 'conserved'
-            ? '消耗、损耗流入环境，合作收益与残骸只能从环境中回收：文明与环境的物质之和恒为 10000。'
-            : '与原 axioms.html 相同：消耗直接消失，合作与击毁奖励凭空产生，物质总量会变化。';
+    const KIND_ICON = { birth: '🌱', contact: '📡', space: '🚀', boom: '💥', filter: '☢️', collapse: '🔥', starve: '🥀',
+        war: '⚔️', destroy: '💀', alliance: '🤝', darkforest: '🌲', empire: '🌌', supernova: '✴️', hegemon: '👑' };
+    function updateChronicle(world) {
+        const sub = world.sliceStart
+            ? '今日宇宙 · 种子 ' + world.seed + ' · 从第 ' + world.sliceStart + ' 周期切入'
+            : '种子 ' + world.seed + ' · 共 ' + world.events.length + ' 条记录';
+        setText(els['chron-sub'], 'chsub', sub);
+        setText(els['chron-title'], 'chtitle', world.sliceStart ? '今日宇宙 · 大事件' : '宇宙大事件');
+        const evs = world.events;
+        const key = evs.length + ':' + (evs.length ? evs[evs.length - 1].t : 0) + ':' + world.sliceStart + ':' + world.seed;
+        if (last.chron === key) return;
+        last.chron = key;
+        let html = '';
+        let cutDone = !world.sliceStart;
+        const shown = [];
+        for (let i = evs.length - 1; i >= 0 && shown.length < 80; i--) {
+            const e = evs[i];
+            if (!e.major && e.t < (world.sliceStart || 0)) continue;     // 前史只保留大事
+            shown.push(i);
+        }
+        for (const i of shown) {
+            const e = evs[i];
+            if (!cutDone && e.t < world.sliceStart) { html += '<li class="cut">—— 切片开始前的宇宙前史 ——</li>'; cutDone = true; }
+            const cls = (e.major ? 'major' : '') + (world.sliceStart && e.t < world.sliceStart ? ' pre' : '');
+            html += '<li class="' + cls + '" data-ev="' + i + '"><span class="t">' + e.t + '</span><span class="k">' + (KIND_ICON[e.kind] || '·') + '</span><span>' + e.text + '</span></li>';
+        }
+        if (!html) html = '<li class="cut">宇宙还很安静……</li>';
+        els['chron-list'].innerHTML = html;
     }
 
-    return { init, buildParams, updateStats, updateInspector, setPlaying, setRuleNote, els };
+    return { init, buildParams, updateStats, updateInspector, updateChronicle, setPlaying, els };
 })();
 
 // ============================== APP ==============================
@@ -1145,6 +1480,11 @@ const App = (function () {
     let selectedId = -1;
     let seedStr = '';
 
+    function todaySeed() {
+        const d = new Date();
+        const pad = v => String(v).padStart(2, '0');
+        return 'day-' + d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
     function readSeedFromURL() {
         try {
             const q = new URLSearchParams(global.location.search);
@@ -1168,6 +1508,13 @@ const App = (function () {
         if (input) input.value = seedStr;
         writeSeedToURL(seedStr);
         world = createWorld(params, seedStr);
+        // 今日宇宙：种子以 day- 开头时，直接快进到当天随机选定的历史切片
+        if (/^day-/.test(seedStr)) {
+            const r = mulberry32(hashSeed(seedStr + '#slice'));
+            const start = 250 + Math.floor(r() * 1350);
+            for (let i = 0; i < start; i++) Sim.step(world, params);
+            world.sliceStart = start;
+        }
         selectedId = -1;
         acc = 0;
         dirty = true;
@@ -1175,13 +1522,13 @@ const App = (function () {
     }
 
     function stepOnce() {
-        if (!world || world.summary.alive === 0) return;
+        if (!world || (world.summary.alive === 0 && world.summary.unborn === 0)) return;
         Sim.step(world, params);
         dirty = true;
     }
 
     function setRunning(v) {
-        running = v && world.summary.alive > 0;
+        running = v && (world.summary.alive > 0 || world.summary.unborn > 0);
         acc = 0;
         UI.setPlaying(running);
     }
@@ -1189,6 +1536,7 @@ const App = (function () {
     function refreshUI(chartToo) {
         UI.updateStats(world, running);
         UI.updateInspector(world, selectedId, params);
+        UI.updateChronicle(world);
         if (chartToo !== false) Chart.draw(world);
     }
 
@@ -1202,7 +1550,7 @@ const App = (function () {
             if (n > CONFIG.MAX_STEPS_PER_FRAME) { n = CONFIG.MAX_STEPS_PER_FRAME; acc = 0; }
             for (let i = 0; i < n; i++) {
                 Sim.step(world, params);
-                if (world.summary.alive === 0) { running = false; break; }
+                if (world.summary.alive === 0 && world.summary.unborn === 0) { running = false; break; }
             }
             if (n > 0) dirty = true;
         }
@@ -1323,13 +1671,20 @@ const App = (function () {
         $('qb-step').addEventListener('click', doStep);
         $('qb-reset').addEventListener('click', doReset);
 
-        const rule = $('rule-mode');
-        rule.value = params.mode;
-        UI.setRuleNote(params.mode);
-        rule.addEventListener('change', () => {
-            params.mode = rule.value;
-            UI.setRuleNote(params.mode);
-            doReset();             // 规则切换需要从头开始，否则账本不一致
+        $('daily-btn').addEventListener('click', () => {
+            $('seed-input').value = todaySeed();
+            doReset();
+            setRunning(true); forceUI();
+        });
+        $('chron-list').addEventListener('click', e => {
+            let el = e.target;
+            while (el && el.getAttribute && !el.getAttribute('data-ev')) el = el.parentNode;
+            if (!el || !el.getAttribute) return;
+            const ev = world.events[+el.getAttribute('data-ev')];
+            if (!ev) return;
+            if (ev.ids.length) selectedId = ev.ids[ev.ids.length > 1 ? 1 : 0];
+            if (ev.x !== undefined) Render.centerOn(ev.x, ev.y);
+            forceUI();
         });
 
         $('seed-random').addEventListener('click', () => {
@@ -1364,7 +1719,7 @@ const App = (function () {
 
     function boot() {
         UI.init();
-        seedStr = readSeedFromURL() || randomSeedString();
+        seedStr = readSeedFromURL() || todaySeed();
         UI.els['seed-input'].value = seedStr;
         setupControls();
         setupCanvas();
@@ -1376,7 +1731,7 @@ const App = (function () {
 })();
 
 // 供调试 / Node 测试使用
-global.Cosmos = { CONFIG, PARAM_DEFS, defaultParams, createWorld, Sim, Render, Chart, UI, App, SpatialGrid, mulberry32, hashSeed, summarize };
+global.Cosmos = { CONFIG, PARAM_DEFS, defaultParams, createWorld, Sim, Render, Chart, UI, App, SpatialGrid, mulberry32, hashSeed, summarize, torusDist };
 
 if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', App.boot);

@@ -93,14 +93,14 @@ function runWorld(params, seed, steps) {
 {
   const p = C.defaultParams();
   const a = runWorld(p, 'abc', 500), b = runWorld(p, 'abc', 500);
-  const sig = w => w.civs.map(c => c.resources.toFixed(6) + c.alive).join('|') + w.env;
+  const sig = w => w.civs.map(c => c.resources.toFixed(6) + c.alive).join('|') + w.env + '|' + w.events.length;
   console.log('determinism same seed:', sig(a) === sig(b) ? 'OK' : 'FAIL');
 }
 
 // ---------- validation + benchmark ----------
 function check(w, mode) {
   for (const c of w.civs) {
-    for (const k of ['x', 'y', 'resources', 'size', 'level', 'peakResources']) {
+    for (const k of ['x', 'y', 'resources', 'size', 'level', 'tech', 'peakResources']) {
       if (!Number.isFinite(c[k])) throw new Error(`NaN/Inf in civ ${c.id}.${k}`);
     }
     if (c.alive && (c.allies.has(c.id) || c.enemies.has(c.id))) throw new Error('self relation');
@@ -137,19 +137,15 @@ function bench(label, n, mode, seeds, overrides = {}) {
     const s = w.summary;
     rows.push({ label, n, mode, seed, msPerStep: +(dt / STEPS).toFixed(4), renderMsJS: +rdt.toFixed(4),
       alive: s.alive, dead: s.dead, alliances: s.alliances, conflicts: s.conflicts,
-      civMatterPct: +(s.civRatio * 100).toFixed(1), total: +s.totalMatter.toFixed(3) });
+      civMatterPct: +(s.civRatio * 100).toFixed(1), total: +s.totalMatter.toFixed(3), events: w.events.length, spacefaring: s.spacefaring });
   }
 }
 const seeds = ['1', '42', 'cosmos', '20261103'];
 // warm-up
 bench('warmup', 20, 'conserved', ['w']); rows.length = 0;
 bench('default', 20, 'conserved', seeds);
-bench('default', 20, 'legacy', seeds);
-bench('max slider', 50, 'conserved', seeds, { detectionRange: 300, aggression: 1, cooperation: 1, growthRate: 3 });
-bench('max slider', 50, 'legacy', seeds, { detectionRange: 300, aggression: 1, cooperation: 1, growthRate: 3 });
+bench('max slider', 50, 'conserved', seeds, { detectionRange: 300, aggression: 1, cooperation: 1, suspicion: 1, growthRate: 3, disasterRate: 3 });
+bench('min slider', 5, 'conserved', seeds, { detectionRange: 50, aggression: 0, cooperation: 0, suspicion: 0, growthRate: 0.5, disasterRate: 0, contactLevel: 1 });
 bench('max slider, default behaviour params', 50, 'conserved', seeds);
-// stress beyond UI range (API only) to show spatial grid scaling
-bench('stress (API only)', 500, 'conserved', ['1', '42'], { detectionRange: 50 });
-bench('stress (API only)', 2000, 'conserved', ['1'], { detectionRange: 50 });
 console.table(rows);
 console.log('All checks passed: no exceptions, no NaN, relations symmetric, matter conserved (conserved mode).');
