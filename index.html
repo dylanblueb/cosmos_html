@@ -460,6 +460,7 @@ class Civilization {
         this.aggressiveness = rng();
         this.cooperativeness = rng();
         this.baseEfficiency = 0.3 + rng() * 0.4;
+        this.growthFactor = 0.3 + rng() * 1.4;    // 发展速度倍率：有的文明起飞快，有的停滞很久
         // 关系网络（存 id，死亡时双向清理）
         this.allies = new Set();
         this.enemies = new Set();
@@ -500,22 +501,26 @@ function createWorld(params, seedStr) {
     const W = CONFIG.WORLD_W, H = CONFIG.WORLD_H;
     const civs = [];
     const raw = [];
-    // 均匀散布在整个世界中，彼此保持最小间距（拒绝采样，放不下时逐步放宽）
-    const M = 40;
-    let minD = 0.8 * Math.sqrt((W - 2 * M) * (H - 2 * M) / n);
+    // 随机散布：几个疏密不一的星团 + 零散的野生文明，铺满整个世界但不均匀
+    const M = 40, MIN_D = 22;
+    const clusters = [];
+    const nc = 2 + Math.floor(rng() * 3);               // 2–4 个星团
+    for (let k = 0; k < nc; k++) clusters.push({ x: M + rng() * (W - 2 * M), y: M + rng() * (H - 2 * M), s: 40 + rng() * 110 });
+    const gauss = () => { let u = 0, v = 0; while (u === 0) u = rng(); v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
     const pts = [];
     for (let i = 0; i < n; i++) {
         let x = 0, y = 0, ok = false;
-        for (let attempt = 0; !ok; attempt++) {
-            x = M + rng() * (W - 2 * M);
-            y = M + rng() * (H - 2 * M);
+        for (let attempt = 0; !ok && attempt < 500; attempt++) {
+            if (rng() < 0.3) { x = M + rng() * (W - 2 * M); y = M + rng() * (H - 2 * M); }   // 30% 零散分布
+            else { const c = clusters[Math.floor(rng() * nc)]; x = c.x + gauss() * c.s; y = c.y + gauss() * c.s; }
+            if (x < M || x > W - M || y < M || y > H - M) continue;
             ok = true;
             for (const q of pts) {
                 const dx = q[0] - x, dy = q[1] - y;
-                if (dx * dx + dy * dy < minD * minD) { ok = false; break; }
+                if (dx * dx + dy * dy < MIN_D * MIN_D) { ok = false; break; }
             }
-            if (!ok && attempt % 300 === 299) minD *= 0.9;
         }
+        if (!ok) { x = M + rng() * (W - 2 * M); y = M + rng() * (H - 2 * M); }
         pts.push([x, y]);
         const share = 0.7 + rng() * 0.6;
         raw.push(share);
@@ -701,7 +706,7 @@ const Sim = (function () {
         if (civ.resources > growthCost * 2) {
             civ.resources -= growthCost;
             sink(world, growthCost);
-            civ.size = Math.min(CONFIG.MAX_SIZE, civ.size * (1 + p.growthRate * 0.01));
+            civ.size = Math.min(CONFIG.MAX_SIZE, civ.size * (1 + p.growthRate * 0.01 * civ.growthFactor));
             const lv = Math.floor(civ.size);
             if (lv > civ.level) civ.level = lv;
         }
@@ -1103,7 +1108,7 @@ const UI = (function () {
             ['星际航行', !c.alive ? '—' : (params && contactRange(c, params) > 0
                 ? '已解锁 · 航程 ' + fmt(contactRange(c, params), 0)
                 : '未解锁（需 Lv' + (params ? params.contactLevel : '?') + '）')],
-            ['效率', fmt(c.efficiency, 2)],
+            ['效率 · 发展速度', fmt(c.efficiency, 2) + ' · ×' + fmt(c.growthFactor, 2)],
             ['攻击性 · 合作性', fmt(c.aggressiveness, 2) + ' · ' + fmt(c.cooperativeness, 2)],
             ['年龄', c.alive ? c.age + ' 周期' : c.age + '（灭绝于第 ' + c.diedAt + ' 周期）'],
             ['盟友 · 敌人', c.alive ? c.allies.size + ' · ' + c.enemies.size : '—'],
