@@ -395,7 +395,7 @@ const CONFIG = {
 };
 
 const PARAM_DEFS = [
-    { group: '初始参数', key: 'initialCivs',        id: 'initial-civs',        label: '文明总数（陆续诞生）', min: 5, max: 50, step: 1, value: 24, digits: 0, hint: '重置后生效' },
+    { group: '初始参数', key: 'initialCivs',        id: 'initial-civs',        label: '首批文明数', min: 5, max: 50, step: 1, value: 24, digits: 0, hint: '前 900 周期陆续诞生，重置后生效' },
     { group: '竞争参数', key: 'aggression',         id: 'aggression',          label: '攻击倾向',     min: 0,   max: 1,   step: 0.05, value: 0.4, digits: 2 },
     { group: '竞争参数', key: 'cooperation',        id: 'cooperation',         label: '合作倾向',     min: 0,   max: 1,   step: 0.05, value: 0.5, digits: 2 },
     { group: '竞争参数', key: 'suspicion',          id: 'suspicion',           label: '猜疑程度',     min: 0,   max: 1,   step: 0.05, value: 0.5, digits: 2, hint: '越高越倾向先下手' },
@@ -404,6 +404,7 @@ const PARAM_DEFS = [
     { group: '生存参数', key: 'contactLevel',       id: 'contact-level',       label: '星际接触门槛', min: 1,   max: 6,   step: 1,    value: 3,   digits: 0, hint: '达到该科技等级才能探测、接触与航行' },
     { group: '生存参数', key: 'detectionRange',     id: 'detection-range',     label: '探测范围',     min: 50,  max: 300, step: 10,  value: 140, digits: 0 },
     { group: '生存参数', key: 'disasterRate',       id: 'disaster-rate',       label: '天灾频率',     min: 0,   max: 3,   step: 0.1,  value: 1,   digits: 1, hint: '超新星、内乱的相对频率' },
+    { group: '生存参数', key: 'lifeRate',           id: 'life-rate',           label: '新文明涌现',   min: 0,   max: 3,   step: 0.1,  value: 1,   digits: 1, hint: '灭亡之地、环境好转的星系会孕育新文明' },
     { group: '模拟控制', key: 'simulationSpeed',    id: 'simulation-speed',    label: '模拟速度',     min: 1,   max: 100, step: 1,    value: 50,  digits: 0, hint: '≈ 速度×1.2 步/秒' }
 ];
 
@@ -574,6 +575,7 @@ function createWorld(params, seedStr) {
         fleets: [],
         flashes: [],                     // 超新星等视觉效果
         initialCount: n,
+        graves: [],
         mode: 'conserved',
         counts: { conflicts: 0, cooperations: 0, alliancesFormed: 0, colonies: 0, supernovae: 0 },
         events: [],
@@ -605,11 +607,11 @@ const Sim = (function () {
         c.levelLog.push([world.cycles, lv]);
     }
 
-    function birth(world, c) {
+    function birth(world, c, star) {
         const rng = world.rng;
         // 选一颗还有物质的恒星作为母星（可能落在别人的疆域里）
-        let best = null;
-        for (let k = 0; k < 40; k++) {
+        let best = star || null;
+        for (let k = 0; k < 40 && !best; k++) {
             const s = world.stars[Math.floor(rng() * world.stars.length)];
             if (!s.alive || s.matter < 15) continue;
             if (world.civs.some(o => o.alive && o.home === s.id)) continue;
@@ -630,7 +632,8 @@ const Sim = (function () {
         c.stars.add(best.id);
         const take = Math.min(best.matter * 0.3, 40);
         best.matter -= take; c.resources = take; c.peakResources = take;
-        if (world.cycles > 0) log(world, 'birth', '文明 ' + name(c) + ' 诞生' + inside, c.x, c.y, [c.id], !!inside);
+        if (world.cycles > 0 && !star) log(world, 'birth', '文明 ' + name(c) + ' 诞生' + inside, c.x, c.y, [c.id], !!inside);
+        return inside;
     }
 
     function kill(world, civ, killer, cause) {
@@ -639,6 +642,8 @@ const Sim = (function () {
         world.env += Math.max(0, civ.resources);
         civ.resources = 0;
         civ.diedAt = world.cycles;
+        world.graves.push({ x: civ.x, y: civ.y, t: world.cycles, id: civ.id });
+        if (world.graves.length > 200) world.graves.shift();
         civ.killedBy = killer ? killer.id : -1;
         civ.cause = cause || '';
         for (const sid of civ.stars) { const s = world.stars[sid]; if (s.owner === civ.id) s.owner = -1; }
@@ -966,7 +971,7 @@ const Sim = (function () {
         const rng = world.rng;
         for (let k = 0; k < 3; k++) {
             let s = world.stars[Math.floor(rng() * world.stars.length)];
-            if (!s.alive && rng() < 0.3) s.alive = true;          // 恒星残骸偶尔重新点燃
+            if (!s.alive && rng() < 0.3) { s.alive = true; s.reignitedAt = world.cycles; }   // 恒星残骸偶尔重新点燃
             if (!s.alive) s = world.stars.find(x => x.alive) || s;
             s.matter += share / 3;
         }
@@ -985,6 +990,7 @@ const Sim = (function () {
     function step(world, p) {
         world.cycles++;
         for (const c of world.civs) if (!c.born && c.bornAt <= world.cycles) birth(world, c);
+        emergence(world, p);
         const order = shuffleOrder(world);
         for (const c of order) if (c.alive) develop(world, c, p);
         for (const c of order) {
@@ -1000,6 +1006,35 @@ const Sim = (function () {
         hegemon(world);
         world.summary = summarize(world);
         recordHistory(world, false);
+    }
+
+    // ---------- 8. 新文明涌现：文明灭亡之地、环境好转的星系会孕育新生命 ----------
+    function emergence(world, p) {
+        if (world.cycles % 10 || world.cycles < CONFIG.BIRTH_SPAN * 0.5 || p.lifeRate <= 0) return;
+        let alive = 0; for (const c of world.civs) if (c.alive) alive++;
+        if (alive >= 60 || world.civs.length >= 240) return;
+        const rng = world.rng;
+        for (let k = 0; k < 6; k++) {
+            const s = world.stars[Math.floor(rng() * world.stars.length)];
+            const before = s.lastMatter === undefined ? s.matter : s.lastMatter;
+            s.lastMatter = s.matter;
+            if (!s.alive || s.matter < 35) continue;
+            if (s.owner >= 0 && world.civs[s.owner].home === s.id) continue;      // 别人的母星不会再长出文明
+            let grave = null;
+            for (const g of world.graves) if (world.cycles - g.t < 800 && torusDist(g.x, g.y, s.x, s.y) < 120) { grave = g; break; }
+            const greener = s.matter > before * 1.25 || (s.reignitedAt !== undefined && world.cycles - s.reignitedAt < 400);
+            const chance = 0.02 * p.lifeRate * (1 + (grave ? 3 : 0) + (greener ? 2 : 0)) * (s.owner >= 0 ? 0.4 : 1);
+            if (rng() >= chance) continue;
+            const c = new Civilization(world.civs.length, rng);
+            world.civs.push(c);
+            const inside = birth(world, c, s);
+            let text;
+            if (grave) text = '废墟上的新生：' + name(c) + ' 在 ' + name(world.civs[grave.id]) + ' 灭亡之地附近崛起';
+            else if (greener) text = '环境好转：' + (s.reignitedAt !== undefined ? '重新点燃的恒星' : '物质回流的星系') + '孕育出新文明 ' + name(c);
+            else text = '新文明 ' + name(c) + ' 诞生';
+            log(world, 'rebirth', text + (inside || ''), c.x, c.y, [c.id], !!(grave || greener));
+            break;
+        }
     }
 
     function hegemon(world) {
@@ -1306,7 +1341,8 @@ const Chart = (function () {
         for (const p of hist) if (p.conflicts > maxC) maxC = p.conflicts;
         line(hist, p => p.conflicts, maxC, '#e74c3c');
         line(hist, p => p.ratio, 1, '#4ecdc4');
-        line(hist, p => p.alive, world.initialCount, '#2ecc71');
+        let maxA = world.initialCount; for (const h of hist) if (h.alive > maxA) maxA = h.alive;
+        line(hist, p => p.alive, maxA, '#2ecc71');
     }
     return { init, resize, draw };
 })();
@@ -1438,7 +1474,7 @@ const UI = (function () {
     }
 
     const KIND_ICON = { birth: '🌱', contact: '📡', space: '🚀', boom: '💥', filter: '☢️', collapse: '🔥', starve: '🥀',
-        war: '⚔️', destroy: '💀', alliance: '🤝', darkforest: '🌲', empire: '🌌', supernova: '✴️', hegemon: '👑' };
+        war: '⚔️', destroy: '💀', rebirth: '🌿', alliance: '🤝', darkforest: '🌲', empire: '🌌', supernova: '✴️', hegemon: '👑' };
     function updateChronicle(world) {
         const sub = world.sliceStart
             ? '今日宇宙 · 种子 ' + world.seed + ' · 从第 ' + world.sliceStart + ' 周期切入'
