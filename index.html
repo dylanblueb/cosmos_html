@@ -1220,7 +1220,16 @@ const Render = (function () {
             if (any) { ctx.strokeStyle = RING_COLORS[col]; ctx.stroke(); }
         }
 
-        // 关系线（沿环面最短路径）
+        // 关系线（沿环面最短路径）：跨边时两端各画一段，从对边接回目标，并裁剪在宇宙范围内
+        const tline = (ax, ay, bx, by) => {
+            const dx = torusDX(ax, bx), dy = torusDY(ay, by);
+            ctx.moveTo(ax, ay); ctx.lineTo(ax + dx, ay + dy);
+            if (Math.abs(bx - ax) > CONFIG.WORLD_W / 2 || Math.abs(by - ay) > CONFIG.WORLD_H / 2) {
+                ctx.moveTo(bx, by); ctx.lineTo(bx - dx, by - dy);
+            }
+        };
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, CONFIG.WORLD_W, CONFIG.WORLD_H); ctx.clip();
         const rel = (set, style, width, dash) => {
             ctx.beginPath();
             for (const c of civs) {
@@ -1228,7 +1237,7 @@ const Render = (function () {
                 for (const id of c[set]) {
                     if (id < c.id) continue;
                     const o = civs[id];
-                    ctx.moveTo(c.x, c.y); ctx.lineTo(c.x + torusDX(c.x, o.x), c.y + torusDY(c.y, o.y));
+                    tline(c.x, c.y, o.x, o.y);
                 }
             }
             ctx.strokeStyle = style; ctx.lineWidth = width * px;
@@ -1241,13 +1250,14 @@ const Render = (function () {
         const sel = selectedId >= 0 ? civs[selectedId] : null;
         if (sel && sel.alive) {
             ctx.beginPath();
-            for (const id of sel.allies) { const o = civs[id]; ctx.moveTo(sel.x, sel.y); ctx.lineTo(sel.x + torusDX(sel.x, o.x), sel.y + torusDY(sel.y, o.y)); }
+            for (const id of sel.allies) { const o = civs[id]; tline(sel.x, sel.y, o.x, o.y); }
             ctx.strokeStyle = 'rgba(46, 204, 113, 0.85)'; ctx.lineWidth = 2.5 * px; ctx.stroke();
             ctx.beginPath();
-            for (const id of sel.enemies) { const o = civs[id]; ctx.moveTo(sel.x, sel.y); ctx.lineTo(sel.x + torusDX(sel.x, o.x), sel.y + torusDY(sel.y, o.y)); }
+            for (const id of sel.enemies) { const o = civs[id]; tline(sel.x, sel.y, o.x, o.y); }
             ctx.strokeStyle = 'rgba(231, 76, 60, 0.9)'; ctx.lineWidth = 1.5 * px;
             ctx.setLineDash([5 * px, 4 * px]); ctx.stroke(); ctx.setLineDash([]);
         }
+        ctx.restore();
 
         // 飞行中的舰队 / 殖民船 / 信使
         for (const f of world.fleets) {
